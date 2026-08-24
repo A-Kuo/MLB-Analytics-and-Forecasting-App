@@ -1,0 +1,7 @@
+panel>=1.4
+pandas>=2.0
+scikit-learn>=1.4
+plotly>=5.20
+requests>=2.31
+python-dotenv>=1.0
+feedparser>=6.0
