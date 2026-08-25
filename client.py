@@ -55,5 +55,10 @@ def get_team_trajectory(team_id: int, season: int, mode: str) -> dict:
 
 
 @st.cache_data(ttl=300)
+def get_metric_forecast(player_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int) -> dict:
+    return trajectories.compute_metric_forecast(player_id, metric, group, train_start, train_end, forecast_end)
+
+
+@st.cache_data(ttl=300)
 def get_news(keywords: list[str], limit: int = 10) -> list[dict]:
     return news.get_headlines(keywords, limit)

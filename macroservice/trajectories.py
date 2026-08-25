@@ -21,7 +21,7 @@ from macroservice.features import (
     build_pitcher_csw_frame,
     build_team_rolling_frame,
 )
-from macroservice.regression import fit_trajectory_ensemble
+from macroservice.regression import fit_and_forecast, fit_trajectory_ensemble
 from macroservice.transform import batted_balls_dataframe, game_log_dataframe, pitches_dataframe, schedule_dataframe
 from utils.filters import metrics_for_group
 
@@ -151,3 +151,51 @@ def compute_team_trajectory(team_id: int, season: int, mode: str) -> dict:
         hover_extra=frame["opponent"].tolist(),
         hover_extra_label="Opponent",
     )
+
+
+def _empty_forecast_payload(metric_label: str) -> dict:
+    return {"years": [], "forecast": [], "ci_lower": [], "ci_upper": [], "actual": [], "metric_label": metric_label}
+
+
+@cached(ttl_seconds=TRAJECTORY_TTL_SECONDS)
+def compute_metric_forecast(
+    player_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int
+) -> dict:
+    """Fits on annual actuals in [train_start, train_end] (every training
+    year is used -- no holdout split, unlike the trajectory functions
+    above), then forecasts forward through forecast_end.
+
+    The returned "years"/"forecast"/"ci_lower"/"ci_upper" span only
+    [train_end, forecast_end] -- the dashboard's Forecast graph draws the
+    forecast line starting where the training window ends, not
+    re-drawing the training years already shown on the Performance Trend
+    graph. "actual" carries real season values wherever they exist in that
+    same window (None elsewhere), for a forecast-vs-actual comparison --
+    never for the training years themselves, since those were already used
+    to fit the line.
+    """
+    label = dict(metrics_for_group(group)).get(metric, metric)
+    full_series = players.get_season_series(player_id, metric, group, train_start, forecast_end)
+    actual_by_year = dict(zip(full_series["years"], full_series["values"]))
+
+    train_years = [year for year in full_series["years"] if year <= train_end]
+    if not train_years:
+        return _empty_forecast_payload(label)
+
+    X_train = np.array(train_years, dtype=float).reshape(-1, 1)
+    y_train = np.array([actual_by_year[year] for year in train_years], dtype=float)
+
+    forecast_years = list(range(train_end, forecast_end + 1))
+    X_full = np.array(forecast_years, dtype=float).reshape(-1, 1)
+
+    bounds = RATE_STAT_BOUNDS if metric in ("avg", "obp", "slg", "ops") else None
+    fit = fit_and_forecast(X_train, y_train, X_full, bounds=bounds)
+
+    return {
+        "years": forecast_years,
+        "forecast": fit.y_pred_all.tolist(),
+        "ci_lower": fit.ci_lower.tolist(),
+        "ci_upper": fit.ci_upper.tolist(),
+        "actual": [actual_by_year.get(year) for year in forecast_years],
+        "metric_label": label,
+    }

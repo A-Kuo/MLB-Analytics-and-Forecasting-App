@@ -1,10 +1,21 @@
-from chart import build_multi_metric_figure, build_trajectory_figure
+from chart import build_forecast_figure, build_multi_metric_figure, build_trajectory_figure
 
 
 def _series(start=2018, n=5, base=0.700, step=0.01):
     return {
         "years": [start + i for i in range(n)],
         "values": [base + step * i for i in range(n)],
+    }
+
+
+def _forecast_payload(start=2020, n=4, base=0.700, step=0.01, actual=None):
+    years = [start + i for i in range(n)]
+    return {
+        "years": years,
+        "forecast": [base + step * i for i in range(n)],
+        "ci_lower": [base + step * i - 0.02 for i in range(n)],
+        "ci_upper": [base + step * i + 0.02 for i in range(n)],
+        "actual": actual if actual is not None else [None] * n,
     }
 
 
@@ -114,3 +125,54 @@ def test_hover_extra_customdata_is_sliced_by_split():
     holdout_trace = next(t for t in fig.data if t.name == "Holdout (actual)")
     assert list(train_trace.customdata) == hover_extra[:8]
     assert list(holdout_trace.customdata) == hover_extra[8:]
+
+
+def test_forecast_figure_has_ci_forecast_and_no_actual_trace_when_absent():
+    fig = build_forecast_figure({"ops": _forecast_payload()}, {"ops": "OPS"})
+    names = [t.name for t in fig.data]
+    assert "OPS 95% CI" in names
+    assert "OPS forecast" in names
+    assert "OPS actual" not in names
+
+
+def test_forecast_figure_adds_actual_trace_only_for_non_none_years():
+    payload = _forecast_payload(n=4, actual=[0.71, None, 0.73, None])
+    fig = build_forecast_figure({"ops": payload}, {"ops": "OPS"})
+    actual_trace = next(t for t in fig.data if t.name == "OPS actual")
+    assert list(actual_trace.x) == [2020, 2022]
+    assert list(actual_trace.y) == [0.71, 0.73]
+
+
+def test_forecast_figure_one_set_of_traces_per_metric():
+    fig = build_forecast_figure(
+        {"ops": _forecast_payload(base=0.700), "avg": _forecast_payload(base=0.250)},
+        {"ops": "OPS", "avg": "AVG"},
+    )
+    names = {t.name for t in fig.data}
+    assert {"OPS 95% CI", "OPS forecast", "AVG 95% CI", "AVG forecast"} <= names
+
+
+def test_forecast_figure_reveal_truncates_every_series():
+    fig = build_forecast_figure(
+        {"ops": _forecast_payload(n=4, actual=[0.71, 0.72, 0.73, 0.74])}, {"ops": "OPS"}, reveal_upto=2
+    )
+    forecast_trace = next(t for t in fig.data if t.name == "OPS forecast")
+    actual_trace = next(t for t in fig.data if t.name == "OPS actual")
+    assert len(forecast_trace.x) == 2
+    assert len(actual_trace.x) == 2
+
+
+def test_forecast_figure_skips_empty_series_without_erroring():
+    fig = build_forecast_figure({"ops": _forecast_payload(n=0)}, {"ops": "OPS"})
+    assert fig is not None
+    assert not any(t.name == "OPS 95% CI" for t in fig.data)
+
+
+def test_forecast_figure_splits_rate_and_counting_stats_across_axes():
+    fig = build_forecast_figure(
+        {"avg": _forecast_payload(base=0.250), "homeRuns": _forecast_payload(base=30, step=2)},
+        {"avg": "AVG", "homeRuns": "HR"},
+    )
+    forecast_axis_by_name = {t.name: t.yaxis for t in fig.data if t.name in ("AVG forecast", "HR forecast")}
+    assert forecast_axis_by_name["AVG forecast"] == "y"
+    assert forecast_axis_by_name["HR forecast"] == "y2"

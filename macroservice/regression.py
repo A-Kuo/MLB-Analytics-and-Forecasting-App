@@ -127,3 +127,72 @@ def fit_trajectory_ensemble(
         holdout_r2=holdout_r2,
         holdout_rmse=holdout_rmse,
     )
+
+
+@dataclass
+class ForecastFit:
+    y_pred_all: np.ndarray   # blended prediction over every row of X_full
+    ci_lower: np.ndarray
+    ci_upper: np.ndarray
+
+
+def fit_and_forecast(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_full: np.ndarray,
+    bounds: tuple[float, float] | None = None,
+) -> ForecastFit:
+    """Fit the SVR/Huber/GaussianProcess ensemble on ALL of X_train/y_train
+    (no internal holdout split -- unlike fit_trajectory_ensemble, every
+    training row is used for fitting), then predict across X_full, which
+    includes the training rows plus any additional rows beyond them (e.g.
+    future years with no ground truth yet). Regressors extrapolate to new X
+    natively via .predict(); this is a fit/predict split, not a
+    train/holdout split.
+    """
+    X_train = np.atleast_2d(np.asarray(X_train, dtype=float))
+    y_train = np.asarray(y_train, dtype=float)
+    X_full = np.atleast_2d(np.asarray(X_full, dtype=float))
+    n_train = len(y_train)
+
+    if n_train < MIN_SAMPLES_FOR_ENSEMBLE:
+        # Too few training points for a meaningful ensemble fit.
+        flat = np.full(len(X_full), y_train.mean() if n_train else 0.0)
+        return ForecastFit(flat, flat, flat)
+
+    x_scaler = StandardScaler().fit(X_train)
+    X_train_s = x_scaler.transform(X_train)
+    X_full_s = x_scaler.transform(X_full)
+
+    y_mean, y_std = y_train.mean(), (y_train.std() or 1.0)
+    y_train_s = (y_train - y_mean) / y_std
+
+    svr = SVR(kernel="rbf", C=1.0).fit(X_train_s, y_train_s)
+    huber = HuberRegressor().fit(X_train_s, y_train_s)
+    kernel = RBF(length_scale=1.0) + WhiteKernel(noise_level=1.0)
+    gpr = GaussianProcessRegressor(kernel=kernel, normalize_y=False, n_restarts_optimizer=2)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        gpr.fit(X_train_s, y_train_s)
+
+    svr_pred = svr.predict(X_full_s) * y_std + y_mean
+    huber_pred = huber.predict(X_full_s) * y_std + y_mean
+    gpr_pred_s, gpr_std_s = gpr.predict(X_full_s, return_std=True)
+    gpr_pred = gpr_pred_s * y_std + y_mean
+    gpr_std = gpr_std_s * y_std
+
+    blended = (
+        ENSEMBLE_WEIGHTS["svr"] * svr_pred
+        + ENSEMBLE_WEIGHTS["huber"] * huber_pred
+        + ENSEMBLE_WEIGHTS["gpr"] * gpr_pred
+    )
+    ci_lower = blended - CI_Z_SCORE * gpr_std
+    ci_upper = blended + CI_Z_SCORE * gpr_std
+
+    if bounds is not None:
+        lo, hi = bounds
+        blended = np.clip(blended, lo, hi)
+        ci_lower = np.clip(ci_lower, lo, hi)
+        ci_upper = np.clip(ci_upper, lo, hi)
+
+    return ForecastFit(y_pred_all=blended, ci_lower=ci_lower, ci_upper=ci_upper)

@@ -73,6 +73,46 @@ def test_pitcher_trajectory_falls_back_when_statcast_empty(mock_get_pitches, moc
     assert len(payload["x_labels"]) == 10
 
 
+@patch("macroservice.trajectories.players.get_season_series")
+def test_metric_forecast_spans_train_end_to_forecast_end(mock_get_series):
+    # Distinct player_id (301) from other tests -- compute_metric_forecast
+    # is TTL-cached by its full argument tuple.
+    mock_get_series.return_value = {
+        "years": list(range(2015, 2021)),
+        "values": [0.700 + 0.01 * i for i in range(6)],
+    }
+    payload = trajectories.compute_metric_forecast(301, "ops", "hitting", 2015, 2020, 2023)
+    assert payload["years"] == [2020, 2021, 2022, 2023]
+    assert len(payload["forecast"]) == 4
+    assert len(payload["ci_lower"]) == len(payload["ci_upper"]) == 4
+    mock_get_series.assert_called_once_with(301, "ops", "hitting", 2015, 2023)
+
+
+@patch("macroservice.trajectories.players.get_season_series")
+def test_metric_forecast_includes_actuals_where_ground_truth_exists(mock_get_series):
+    # Full series covers through 2022 even though training stops at 2020 --
+    # 2021/2022 should surface as "actual" for a forecast-vs-actual overlay.
+    mock_get_series.return_value = {
+        "years": [2018, 2019, 2020, 2021, 2022],
+        "values": [0.700, 0.710, 0.720, 0.730, 0.740],
+    }
+    payload = trajectories.compute_metric_forecast(302, "ops", "hitting", 2018, 2020, 2024)
+    actual_by_year = dict(zip(payload["years"], payload["actual"]))
+    assert actual_by_year[2020] == 0.720
+    assert actual_by_year[2021] == 0.730
+    assert actual_by_year[2022] == 0.740
+    assert actual_by_year[2023] is None
+    assert actual_by_year[2024] is None
+
+
+@patch("macroservice.trajectories.players.get_season_series")
+def test_metric_forecast_empty_when_no_training_years(mock_get_series):
+    mock_get_series.return_value = {"years": [], "values": []}
+    payload = trajectories.compute_metric_forecast(303, "ops", "hitting", 2015, 2020, 2023)
+    assert payload["years"] == []
+    assert payload["forecast"] == []
+
+
 @patch("macroservice.trajectories.teams.get_schedule")
 def test_team_trajectory_offense_and_defense(mock_get_schedule):
     mock_get_schedule.return_value = [
