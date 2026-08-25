@@ -57,3 +57,39 @@ def get_schedule(team_id: int, season: int) -> list[dict]:
     resp.raise_for_status()
     dates = resp.json().get("dates", [])
     return [game for date in dates for game in date.get("games", [])]
+
+
+@cached(ttl_seconds=GAME_DATA_TTL_SECONDS)
+def get_team_season_stats(team_id: int, season: int, group: str = "hitting") -> dict:
+    """Team-aggregate season stats -- the team-level analogue of
+    players.get_season_stats, backing the "Offense"/"Defense" synthetic
+    team-aggregate entries in the player selector.
+    """
+    resp = request_with_backoff(
+        "GET",
+        f"{BASE_URL}/teams/{team_id}/stats",
+        params={"stats": "season", "group": group, "season": season},
+    )
+    resp.raise_for_status()
+    stats = resp.json().get("stats", [])
+    splits = stats[0].get("splits", []) if stats else []
+    return splits[0]["stat"] if splits else {}
+
+
+def get_team_season_series(team_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
+    """Annual team-aggregate ``metric`` values for each year in
+    [start_year, end_year], skipping years with no recorded value -- the
+    team-level analogue of players.get_season_series.
+    """
+    years: list[int] = []
+    values: list[float] = []
+    for year in range(start_year, end_year + 1):
+        stat = get_team_season_stats(team_id, year, group).get(metric)
+        if stat is None:
+            continue
+        try:
+            values.append(float(stat))
+        except (TypeError, ValueError):
+            continue
+        years.append(year)
+    return {"years": years, "values": values}

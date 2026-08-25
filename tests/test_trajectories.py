@@ -113,6 +113,28 @@ def test_metric_forecast_empty_when_no_training_years(mock_get_series):
     assert payload["forecast"] == []
 
 
+@patch("macroservice.trajectories.teams.get_team_season_series")
+def test_team_metric_forecast_spans_train_end_to_forecast_end(mock_get_team_series):
+    # Distinct team_id (999) from real teams used in other tests, since
+    # compute_team_metric_forecast is TTL-cached by its argument tuple.
+    mock_get_team_series.return_value = {
+        "years": list(range(2015, 2021)),
+        "values": [0.700 + 0.01 * i for i in range(6)],
+    }
+    payload = trajectories.compute_team_metric_forecast(999, "ops", "hitting", 2015, 2020, 2023)
+    assert payload["years"] == [2020, 2021, 2022, 2023]
+    assert len(payload["forecast"]) == 4
+    mock_get_team_series.assert_called_once_with(999, "ops", "hitting", 2015, 2023)
+
+
+@patch("macroservice.trajectories.teams.get_team_season_series")
+def test_team_metric_forecast_empty_when_no_training_years(mock_get_team_series):
+    mock_get_team_series.return_value = {"years": [], "values": []}
+    payload = trajectories.compute_team_metric_forecast(998, "ops", "hitting", 2015, 2020, 2023)
+    assert payload["years"] == []
+    assert payload["forecast"] == []
+
+
 @patch("macroservice.trajectories.teams.get_schedule")
 def test_team_trajectory_offense_and_defense(mock_get_schedule):
     mock_get_schedule.return_value = [

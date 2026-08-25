@@ -157,25 +157,26 @@ def _empty_forecast_payload(metric_label: str) -> dict:
     return {"years": [], "forecast": [], "ci_lower": [], "ci_upper": [], "actual": [], "metric_label": metric_label}
 
 
-@cached(ttl_seconds=TRAJECTORY_TTL_SECONDS)
-def compute_metric_forecast(
-    player_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int
-) -> dict:
-    """Fits on annual actuals in [train_start, train_end] (every training
-    year is used -- no holdout split, unlike the trajectory functions
-    above), then forecasts forward through forecast_end.
+def _compute_forecast(get_series, metric: str, group: str, train_start: int, train_end: int, forecast_end: int) -> dict:
+    """Shared fitting logic behind compute_metric_forecast (player subject)
+    and compute_team_metric_forecast (team-aggregate subject) -- the two
+    differ only in which get_season_series they pull annual actuals from.
+
+    Fits on annual actuals in [train_start, train_end] (every training year
+    is used -- no holdout split, unlike the trajectory functions above),
+    then forecasts forward through forecast_end.
 
     The returned "years"/"forecast"/"ci_lower"/"ci_upper" span only
     [train_end, forecast_end] -- the dashboard's Forecast graph draws the
-    forecast line starting where the training window ends, not
-    re-drawing the training years already shown on the Performance Trend
-    graph. "actual" carries real season values wherever they exist in that
-    same window (None elsewhere), for a forecast-vs-actual comparison --
-    never for the training years themselves, since those were already used
-    to fit the line.
+    forecast line starting where the training window ends, not re-drawing
+    the training years already shown on the Performance Trend graph.
+    "actual" carries real season values wherever they exist in that same
+    window (None elsewhere), for a forecast-vs-actual comparison -- never
+    for the training years themselves, since those were already used to fit
+    the line.
     """
     label = dict(metrics_for_group(group)).get(metric, metric)
-    full_series = players.get_season_series(player_id, metric, group, train_start, forecast_end)
+    full_series = get_series(metric, group, train_start, forecast_end)
     actual_by_year = dict(zip(full_series["years"], full_series["values"]))
 
     train_years = [year for year in full_series["years"] if year <= train_end]
@@ -199,3 +200,19 @@ def compute_metric_forecast(
         "actual": [actual_by_year.get(year) for year in forecast_years],
         "metric_label": label,
     }
+
+
+@cached(ttl_seconds=TRAJECTORY_TTL_SECONDS)
+def compute_metric_forecast(
+    player_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int
+) -> dict:
+    get_series = lambda m, g, s, e: players.get_season_series(player_id, m, g, s, e)  # noqa: E731
+    return _compute_forecast(get_series, metric, group, train_start, train_end, forecast_end)
+
+
+@cached(ttl_seconds=TRAJECTORY_TTL_SECONDS)
+def compute_team_metric_forecast(
+    team_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int
+) -> dict:
+    get_series = lambda m, g, s, e: teams.get_team_season_series(team_id, m, g, s, e)  # noqa: E731
+    return _compute_forecast(get_series, metric, group, train_start, train_end, forecast_end)

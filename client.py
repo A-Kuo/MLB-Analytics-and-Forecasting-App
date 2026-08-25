@@ -30,6 +30,11 @@ def get_season_stats(player_id: int, season: int, group: str) -> dict:
 
 
 @st.cache_data(ttl=60)
+def get_team_season_stats(team_id: int, season: int, group: str) -> dict:
+    return teams.get_team_season_stats(team_id, season, group)
+
+
+@st.cache_data(ttl=60)
 def get_game_log_splits(player_id: int, season: int, group: str) -> list[dict]:
     return players.get_game_log(player_id, season, group)
 
@@ -37,6 +42,11 @@ def get_game_log_splits(player_id: int, season: int, group: str) -> list[dict]:
 @st.cache_data(ttl=60)
 def get_season_series(player_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
     return players.get_season_series(player_id, metric, group, start_year, end_year)
+
+
+@st.cache_data(ttl=60)
+def get_team_season_series(team_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
+    return teams.get_team_season_series(team_id, metric, group, start_year, end_year)
 
 
 @st.cache_data(ttl=300)
@@ -57,6 +67,11 @@ def get_team_trajectory(team_id: int, season: int, mode: str) -> dict:
 @st.cache_data(ttl=300)
 def get_metric_forecast(player_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int) -> dict:
     return trajectories.compute_metric_forecast(player_id, metric, group, train_start, train_end, forecast_end)
+
+
+@st.cache_data(ttl=300)
+def get_team_metric_forecast(team_id: int, metric: str, group: str, train_start: int, train_end: int, forecast_end: int) -> dict:
+    return trajectories.compute_team_metric_forecast(team_id, metric, group, train_start, train_end, forecast_end)
 
 
 @st.cache_data(ttl=300)

@@ -1,9 +1,12 @@
 """Baseball Analytics Dashboard -- Streamlit entry point.
 
-Single-page dashboard: team/season/player selection in a middle row, a
-team + player header (logo/portrait), KPI cards, a year-range Performance
-Trend chart (actuals only, no model fitting), a Forecast chart (trains on
-the same range and projects forward), a game log table, and team-level
+Single-page dashboard: team/season/player selection in a middle row (the
+player selector also offers two synthetic "Offense"/"Defense" team-aggregate
+entries per team, backed by MLB Stats API team-level season stats), a
+team + subject header (logo/portrait), KPI cards, a year-range Performance
+Trend chart (actuals only, no model fitting, updates live as metrics are
+checked/unchecked), a Forecast chart (trains on the same range and projects
+forward, computed only on button press), a game log table, and team-level
 rolling offense/defense trends. A collapsible sidebar (freed up now that
 team/player selection moved to the middle row) holds the toggleable news
 feed.
@@ -33,10 +36,15 @@ from utils.timeline import pushed_year_control, year_range_control
 
 st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide")
 
-EARLIEST_SEASON = 2015
+EARLIEST_SEASON = 1901  # AL founding -- MLB Stats API's season-stats coverage goes back this far
 FORECAST_MAX_YEAR = 2025
 DEFENSE_COLOR = "#C41E3A"
 REVEAL_FRAME_SECONDS = 0.06
+
+AGGREGATE_ENTRIES = [
+    {"id": None, "name": "Offense", "is_aggregate": True, "group": "hitting"},
+    {"id": None, "name": "Defense", "is_aggregate": True, "group": "pitching"},
+]
 
 teams = client.get_teams()
 team_by_name = {team["name"]: team for team in teams}
@@ -56,10 +64,13 @@ with season_col:
     season = st.selectbox("Season", list(range(EARLIEST_SEASON, current_season + 1))[::-1])
 
 roster = client.get_roster(team["id"], season)
-roster_by_name = {player["name"]: player for player in roster}
+# "Offense"/"Defense" are always offered, even for a team/season with no
+# individual roster on file -- they come from a team-level endpoint that
+# doesn't depend on the roster at all.
+roster_by_name = {p["name"]: p for p in AGGREGATE_ENTRIES + roster}
 with player_col:
-    player_name = st.selectbox("Player", sorted(roster_by_name), filter_mode="fuzzy") if roster_by_name else None
-player = roster_by_name.get(player_name) if player_name else None
+    player_name = st.selectbox("Player", sorted(roster_by_name), filter_mode="fuzzy")
+player = roster_by_name[player_name]
 
 with st.sidebar:
     show_news = st.toggle("News Feed", value=False)
@@ -77,11 +88,31 @@ with st.sidebar:
         else:
             st.write("No recent headlines.")
 
-if player is None:
-    st.info("No roster available for this team/season.")
-    st.stop()
+is_aggregate = player.get("is_aggregate", False)
+group = player["group"] if is_aggregate else stat_group_for_position(player["position"])
 
-group = stat_group_for_position(player["position"])
+if is_aggregate:
+    subject_label = f"{team['name']} {player_name}"
+
+    def fetch_season_stats(stats_season: int) -> dict:
+        return client.get_team_season_stats(team["id"], stats_season, group)
+
+    def fetch_season_series(metric: str, start_year: int, end_year: int) -> dict:
+        return client.get_team_season_series(team["id"], metric, group, start_year, end_year)
+
+    def fetch_metric_forecast(metric: str, train_start: int, train_end: int, forecast_end: int) -> dict:
+        return client.get_team_metric_forecast(team["id"], metric, group, train_start, train_end, forecast_end)
+else:
+    subject_label = player_name
+
+    def fetch_season_stats(stats_season: int) -> dict:
+        return client.get_season_stats(player["id"], stats_season, group)
+
+    def fetch_season_series(metric: str, start_year: int, end_year: int) -> dict:
+        return client.get_season_series(player["id"], metric, group, start_year, end_year)
+
+    def fetch_metric_forecast(metric: str, train_start: int, train_end: int, forecast_end: int) -> dict:
+        return client.get_metric_forecast(player["id"], metric, group, train_start, train_end, forecast_end)
 
 team_header_col, player_header_col = st.columns(2)
 with team_header_col:
@@ -90,12 +121,17 @@ with team_header_col:
     label_col.markdown(f"### {team['name']}")
 with player_header_col:
     portrait_col, label_col = st.columns([1, 4])
-    portrait_col.image(headshot_url(player["id"]), width=72)
-    label_col.markdown(f"### {player_name}")
-    label_col.caption(player["position"])
+    if is_aggregate:
+        portrait_col.image(team["logo_url"], width=72)
+        label_col.markdown(f"### {player_name}")
+        label_col.caption("Team Aggregate")
+    else:
+        portrait_col.image(headshot_url(player["id"]), width=72)
+        label_col.markdown(f"### {player_name}")
+        label_col.caption(player["position"])
 
 st.subheader("Season KPIs")
-season_stats = client.get_season_stats(player["id"], season, group)
+season_stats = fetch_season_stats(season)
 kpi_defs = metrics_for_group(group)
 cols = st.columns(len(kpi_defs))
 for col, (key, label) in zip(cols, kpi_defs):
@@ -113,42 +149,40 @@ with metric_panel_col:
             for key, acronym in metrics_for_group(group)
             if st.checkbox(full_name_for_metric(key), key=f"perf_metric_{key}")
         ]
-    if st.button("Visualize", type="primary"):
-        st.session_state["perf_visualized"] = True
-        st.session_state["perf_animate"] = True
 
 with trend_graph_col:
-    if not st.session_state.get("perf_visualized"):
-        st.info("Select one or more metrics, then press Visualize.")
-    elif perf_start == perf_end:
+    if perf_start == perf_end:
         # Both scrubbers on the same year -- a single point isn't a trend.
         st.info("Widen the season range: the two scrubbers are on the same year.")
     elif not selected_metrics:
-        st.info("No metrics selected.")
+        st.info("Select one or more metrics to visualize.")
     else:
         with st.spinner("Pulling season stats..."):
             series_by_metric = {
-                key: client.get_season_series(player["id"], key, group, perf_start, perf_end)
-                for key, _ in selected_metrics
+                key: fetch_season_series(key, perf_start, perf_end) for key, _ in selected_metrics
             }
         acronym_by_metric = dict(selected_metrics)
         populated = {key: s for key, s in series_by_metric.items() if s["years"]}
 
         if not populated:
-            st.info(f"No {perf_start}-{perf_end} season stats for {player_name}.")
+            st.info(f"No {perf_start}-{perf_end} season stats for {subject_label}.")
         else:
-            chart_title = f"{player_name} — {perf_start} to {perf_end}"
+            chart_title = f"{subject_label} — {perf_start} to {perf_end}"
+            # Re-animate the snake reveal whenever the subject or the set of
+            # displayed metrics changes -- not on every rerun (e.g. dragging
+            # a scrubber shouldn't replay the animation for an unchanged set).
+            display_key = (team["id"], player["id"], frozenset(populated))
+            should_animate = st.session_state.get("perf_last_shown_key") != display_key
+            st.session_state["perf_last_shown_key"] = display_key
+
             slot = st.empty()
-            if st.session_state.get("perf_animate"):
-                # Re-render with a growing slice so the lines snake out
-                # left to right, then settle on the full series.
+            if should_animate:
                 frames = max(len(s["years"]) for s in populated.values())
                 for reveal in range(1, frames):
                     slot.plotly_chart(
                         build_multi_metric_figure(populated, acronym_by_metric, reveal, chart_title)
                     )
                     time.sleep(REVEAL_FRAME_SECONDS)
-                st.session_state["perf_animate"] = False
             slot.plotly_chart(build_multi_metric_figure(populated, acronym_by_metric, None, chart_title))
 
 st.subheader("Forecast")
@@ -163,6 +197,15 @@ forecast_end = pushed_year_control(
     "forecast", perf_end, FORECAST_MAX_YEAR, slider_floor_year=EARLIEST_SEASON, label="Scrubber 3 (forecast horizon)"
 )
 
+# The last-computed forecast is cached per subject, so switching player/team
+# doesn't show a stale forecast for the wrong subject until Forecast is
+# pressed again.
+forecast_subject_key = (team["id"], player["id"], group)
+if st.session_state.get("forecast_subject") != forecast_subject_key:
+    st.session_state["forecast_subject"] = forecast_subject_key
+    st.session_state["forecast_computed"] = {}
+    st.session_state["forecast_acronyms"] = {}
+
 forecast_metric_panel_col, forecast_graph_col = st.columns([1, 3])
 with forecast_metric_panel_col:
     st.caption("Metrics")
@@ -172,14 +215,39 @@ with forecast_metric_panel_col:
             for key, acronym in metrics_for_group(group)
             if st.checkbox(full_name_for_metric(key), key=f"forecast_metric_{key}")
         ]
-    if st.button("Forecast", type="primary"):
-        st.session_state["forecast_visualized"] = True
-        st.session_state["forecast_animate"] = True
+    forecast_pressed = st.button("Forecast", type="primary")
 
 with forecast_graph_col:
-    if not st.session_state.get("forecast_visualized"):
-        st.info("Select one or more metrics, then press Forecast.")
-    elif forecast_end <= perf_end:
+    current_forecast_keys = {key for key, _ in forecast_selected_metrics}
+    computed = st.session_state.get("forecast_computed", {})
+
+    if forecast_pressed and forecast_end > perf_end and forecast_selected_metrics:
+        # Forecasting fits a real model per metric -- this is the only path
+        # that ever does that work; every other branch below just filters
+        # or clears the last computed result.
+        with st.spinner("Fitting forecast..."):
+            computed = {
+                key: fetch_metric_forecast(key, perf_start, perf_end, forecast_end)
+                for key, _ in forecast_selected_metrics
+            }
+        st.session_state["forecast_computed"] = computed
+        st.session_state["forecast_acronyms"] = dict(forecast_selected_metrics)
+        st.session_state["forecast_animate"] = True
+    elif current_forecast_keys - computed.keys():
+        # A checked metric was never part of the last computed forecast
+        # (newly checked, or Forecast was pressed while in an invalid
+        # state and nothing new was computed) -- clear until Forecast is
+        # pressed again, rather than silently forecasting on a partial or
+        # stale set.
+        computed = {}
+        st.session_state["forecast_computed"] = {}
+
+    # Unchecked metrics are simply filtered out here -- no recompute, no
+    # clearing, they just drop off the graph immediately.
+    display_metrics = {key: computed[key] for key in current_forecast_keys if key in computed}
+    forecast_acronym_by_metric = st.session_state.get("forecast_acronyms", {})
+
+    if forecast_end <= perf_end:
         # Scrubber 3 at or before scrubber 2 -- a zero-or-negative-width
         # forecast window. Not just ==: forecast_end is clamped to
         # FORECAST_MAX_YEAR, so it can end up *before* perf_end whenever
@@ -187,20 +255,16 @@ with forecast_graph_col:
         # current year and that's later than FORECAST_MAX_YEAR).
         st.info("Widen the forecast horizon: scrubber 3 is at or before scrubber 2.")
     elif not forecast_selected_metrics:
-        st.info("No metrics selected.")
+        st.info("Select one or more metrics, then press Forecast.")
+    elif not display_metrics:
+        st.info("Press Forecast to compute the checked metrics.")
     else:
-        with st.spinner("Fitting forecast..."):
-            forecast_by_metric = {
-                key: client.get_metric_forecast(player["id"], key, group, perf_start, perf_end, forecast_end)
-                for key, _ in forecast_selected_metrics
-            }
-        forecast_acronym_by_metric = dict(forecast_selected_metrics)
-        forecast_populated = {key: p for key, p in forecast_by_metric.items() if p["years"]}
+        forecast_populated = {key: p for key, p in display_metrics.items() if p["years"]}
 
         if not forecast_populated:
-            st.info(f"No training data in {perf_start}-{perf_end} for {player_name}.")
+            st.info(f"No training data in {perf_start}-{perf_end} for {subject_label}.")
         else:
-            forecast_title = f"{player_name} — forecast {perf_end} to {forecast_end}"
+            forecast_title = f"{subject_label} — forecast {perf_end} to {forecast_end}"
             forecast_slot = st.empty()
             if st.session_state.get("forecast_animate"):
                 frames = max(len(p["years"]) for p in forecast_populated.values())
@@ -215,18 +279,24 @@ with forecast_graph_col:
             )
 
 with st.expander("Game Log"):
-    splits = client.get_game_log_splits(player["id"], season, group)
-    if splits:
-        rows = []
-        for split in splits:
-            row = {"date": split.get("date"), "opponent": split.get("opponent", {}).get("name", "")}
-            row.update(split.get("stat", {}))
-            rows.append(row)
-        game_log_df = pd.DataFrame(rows)
-        display_columns = [col for col in GAME_LOG_COLUMNS[group] if col in game_log_df.columns]
-        st.dataframe(game_log_df[display_columns], hide_index=True)
+    if is_aggregate:
+        st.info(
+            "Game log isn't available for team aggregates -- see Team Trends "
+            "below for game-by-game rolling trends."
+        )
     else:
-        st.write("No games logged yet this season.")
+        splits = client.get_game_log_splits(player["id"], season, group)
+        if splits:
+            rows = []
+            for split in splits:
+                row = {"date": split.get("date"), "opponent": split.get("opponent", {}).get("name", "")}
+                row.update(split.get("stat", {}))
+                rows.append(row)
+            game_log_df = pd.DataFrame(rows)
+            display_columns = [col for col in GAME_LOG_COLUMNS[group] if col in game_log_df.columns]
+            st.dataframe(game_log_df[display_columns], hide_index=True)
+        else:
+            st.write("No games logged yet this season.")
 
 st.subheader("Team Trends")
 offense_col, defense_col = st.columns(2)
