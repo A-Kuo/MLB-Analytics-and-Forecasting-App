@@ -2,7 +2,7 @@
 
 Builds the multivariate feature matrices consumed by
 ``regression.fit_trajectory_ensemble``. Takes DataFrames already assembled
-by ``transform.py`` from the raw clients/ JSON responses.
+by ``transform.py`` from the raw API JSON responses.
 """
 from __future__ import annotations
 

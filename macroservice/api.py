@@ -1,34 +1,26 @@
-"""MLB data service: a REST API in front of the MLB Stats API, Baseball
-Savant Statcast, and MLB news RSS, so consuming applications never call
-those upstreams directly. Every outbound call goes through backoff.py's
-exponential backoff wrapper to respect upstream rate limits.
+"""FastAPI facade over the macroservice's domain modules.
 
-The trajectory endpoints (hitter-trajectory, pitcher-trajectory, team
-trajectory) go further: they fit the SVR/Huber/GaussianProcess ensemble
-server-side and return the finished trajectory (blended trend, 95% CI band,
-holdout R2/RMSE) as JSON, so a consuming dashboard never needs pandas or
-scikit-learn locally -- it only renders what this service already computed.
+This is a thin, optional surface: every route body is one line delegating
+to a plain function in teams.py/players.py/statcast.py/news.py/
+trajectories.py. The Streamlit dashboard (client.py) calls those same
+functions in-process and does not depend on this app running -- this exists
+so the macroservice can still be run standalone (``uvicorn macroservice.api:app``)
+for any future non-Streamlit consumer.
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from fastapi import FastAPI, HTTPException, Query
 
-import trajectory
-from clients import mlb_client, news_client, statcast_client
+from macroservice import news, players, statcast, teams, trajectories
 
-app = FastAPI(title="MLB Data Service", version="1.0.0")
-
-TEAMS_PATH = Path(__file__).parent / "config" / "teams.json"
-TEAMS: list[dict] = json.loads(TEAMS_PATH.read_text())
-TEAM_BY_ID: dict[int, dict] = {team["id"]: team for team in TEAMS}
+app = FastAPI(title="MLB Macroservice", version="1.0.0")
 
 
 def _require_known_team(team_id: int) -> None:
-    if team_id not in TEAM_BY_ID:
-        raise HTTPException(status_code=404, detail=f"Unknown team_id {team_id}")
+    try:
+        teams.require_known_team(team_id)
+    except teams.UnknownTeamError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/health")
@@ -38,19 +30,19 @@ def health() -> dict:
 
 @app.get("/teams")
 def list_teams() -> list[dict]:
-    return TEAMS
+    return teams.TEAMS
 
 
 @app.get("/teams/{team_id}/roster")
 def roster(team_id: int, season: int = Query(..., description="Season year, e.g. 2026")) -> list[dict]:
     _require_known_team(team_id)
-    return mlb_client.get_roster(team_id, season)
+    return teams.get_roster(team_id, season)
 
 
 @app.get("/teams/{team_id}/schedule")
 def schedule(team_id: int, season: int = Query(...)) -> list[dict]:
     _require_known_team(team_id)
-    return mlb_client.get_schedule(team_id, season)
+    return teams.get_schedule(team_id, season)
 
 
 @app.get("/players/{player_id}/game-log")
@@ -59,7 +51,7 @@ def game_log(
     season: int = Query(...),
     group: str = Query("hitting", pattern="^(hitting|pitching)$"),
 ) -> list[dict]:
-    return mlb_client.get_game_log(player_id, season, group)
+    return players.get_game_log(player_id, season, group)
 
 
 @app.get("/players/{player_id}/season-stats")
@@ -68,22 +60,22 @@ def season_stats(
     season: int = Query(...),
     group: str = Query("hitting", pattern="^(hitting|pitching)$"),
 ) -> dict:
-    return mlb_client.get_season_stats(player_id, season, group)
+    return players.get_season_stats(player_id, season, group)
 
 
 @app.get("/statcast/pitcher/{player_id}")
 def statcast_pitcher(player_id: int, season: int = Query(...)) -> list[dict]:
-    return statcast_client.get_pitcher_pitches(player_id, season)
+    return statcast.get_pitcher_pitches(player_id, season)
 
 
 @app.get("/statcast/batter/{player_id}")
 def statcast_batter(player_id: int, season: int = Query(...)) -> list[dict]:
-    return statcast_client.get_batter_batted_balls(player_id, season)
+    return statcast.get_batter_batted_balls(player_id, season)
 
 
 @app.get("/news")
-def news(keywords: list[str] = Query(...), limit: int = Query(10, ge=1, le=50)) -> list[dict]:
-    return news_client.get_headlines(keywords, limit)
+def news_headlines(keywords: list[str] = Query(...), limit: int = Query(10, ge=1, le=50)) -> list[dict]:
+    return news.get_headlines(keywords, limit)
 
 
 @app.get("/players/{player_id}/hitter-trajectory")
@@ -92,7 +84,7 @@ def hitter_trajectory(
     season: int = Query(...),
     metric: str = Query("ops", pattern="^(avg|obp|slg|ops|homeRuns|rbi|strikeOuts|baseOnBalls)$"),
 ) -> dict:
-    return trajectory.compute_hitter_trajectory(player_id, season, metric)
+    return trajectories.compute_hitter_trajectory(player_id, season, metric)
 
 
 @app.get("/players/{player_id}/pitcher-trajectory")
@@ -101,7 +93,7 @@ def pitcher_trajectory(
     season: int = Query(...),
     fallback_metric: str = Query("era", pattern="^(era|whip|strikeOuts|baseOnBalls|inningsPitched|earnedRuns)$"),
 ) -> dict:
-    return trajectory.compute_pitcher_trajectory(player_id, season, fallback_metric)
+    return trajectories.compute_pitcher_trajectory(player_id, season, fallback_metric)
 
 
 @app.get("/teams/{team_id}/trajectory")
@@ -111,4 +103,4 @@ def team_trajectory(
     mode: str = Query("offense", pattern="^(offense|defense)$"),
 ) -> dict:
     _require_known_team(team_id)
-    return trajectory.compute_team_trajectory(team_id, season, mode)
+    return trajectories.compute_team_trajectory(team_id, season, mode)

@@ -3,3 +3,7 @@ requests>=2.31
 pandas>=2.0
 plotly>=5.20
 python-dotenv>=1.0
+fastapi>=0.110
+uvicorn[standard]>=0.27
+feedparser>=6.0
+scikit-learn>=1.4

@@ -6,8 +6,8 @@ import os
 import feedparser
 from dotenv import load_dotenv
 
-from backoff import request_with_backoff
-from cache import cached
+from macroservice.backoff import request_with_backoff
+from macroservice.caching import cached
 
 load_dotenv()
 

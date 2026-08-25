@@ -1,12 +1,28 @@
-"""MLB Stats API client: rosters, player game logs, season stats, team schedule."""
+"""Team config lookup, roster, and schedule -- MLB Stats API team-scoped resources."""
 from __future__ import annotations
 
-from backoff import request_with_backoff
-from cache import cached
+import json
+from pathlib import Path
+
+from macroservice.backoff import request_with_backoff
+from macroservice.caching import cached
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 ROSTER_TTL_SECONDS = 60 * 60
 GAME_DATA_TTL_SECONDS = 60  # near-real-time: picks up newly posted games quickly
+
+TEAMS_PATH = Path(__file__).parent / "config" / "teams.json"
+TEAMS: list[dict] = json.loads(TEAMS_PATH.read_text())
+TEAM_BY_ID: dict[int, dict] = {team["id"]: team for team in TEAMS}
+
+
+class UnknownTeamError(ValueError):
+    """Raised when a team_id isn't one of the known MLB teams."""
+
+
+def require_known_team(team_id: int) -> None:
+    if team_id not in TEAM_BY_ID:
+        raise UnknownTeamError(f"Unknown team_id {team_id}")
 
 
 @cached(ttl_seconds=ROSTER_TTL_SECONDS)
@@ -23,31 +39,6 @@ def get_roster(team_id: int, season: int) -> list[dict]:
         }
         for entry in roster
     ]
-
-
-@cached(ttl_seconds=GAME_DATA_TTL_SECONDS)
-def get_game_log(player_id: int, season: int, group: str = "hitting") -> list[dict]:
-    resp = request_with_backoff(
-        "GET",
-        f"{BASE_URL}/people/{player_id}/stats",
-        params={"stats": "gameLog", "group": group, "season": season},
-    )
-    resp.raise_for_status()
-    stats = resp.json().get("stats", [])
-    return stats[0].get("splits", []) if stats else []
-
-
-@cached(ttl_seconds=GAME_DATA_TTL_SECONDS)
-def get_season_stats(player_id: int, season: int, group: str = "hitting") -> dict:
-    resp = request_with_backoff(
-        "GET",
-        f"{BASE_URL}/people/{player_id}/stats",
-        params={"stats": "season", "group": group, "season": season},
-    )
-    resp.raise_for_status()
-    stats = resp.json().get("stats", [])
-    splits = stats[0].get("splits", []) if stats else []
-    return splits[0]["stat"] if splits else {}
 
 
 @cached(ttl_seconds=GAME_DATA_TTL_SECONDS)

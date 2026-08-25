@@ -1,5 +1,5 @@
-"""Converts raw clients/ JSON (MLB Stats API splits, Statcast CSV rows) into
-the typed DataFrames that features.py and regression.py expect.
+"""Converts raw API JSON (MLB Stats API splits, Statcast CSV rows) into the
+typed DataFrames that features.py and regression.py expect.
 """
 from __future__ import annotations
 
