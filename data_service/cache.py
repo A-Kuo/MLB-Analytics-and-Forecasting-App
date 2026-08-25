@@ -1,8 +1,9 @@
-"""TTL-based in-memory caching for API responses.
+"""TTL-based in-memory caching for computed responses.
 
-Keeps repeated widget interactions (re-selecting a team/season/player) from
-re-hitting the MLB Stats API on every rerun, while still expiring often
-enough to pick up newly posted game data.
+Keeps repeated dashboard reruns (re-selecting a team/season/player, or a
+Streamlit script rerun on any widget interaction) from re-fetching upstream
+data or re-fitting a trajectory model on every request, while still
+expiring often enough to pick up newly posted game data.
 """
 from __future__ import annotations
 

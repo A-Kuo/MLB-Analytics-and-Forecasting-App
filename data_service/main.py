@@ -2,6 +2,12 @@
 Savant Statcast, and MLB news RSS, so consuming applications never call
 those upstreams directly. Every outbound call goes through backoff.py's
 exponential backoff wrapper to respect upstream rate limits.
+
+The trajectory endpoints (hitter-trajectory, pitcher-trajectory, team
+trajectory) go further: they fit the SVR/Huber/GaussianProcess ensemble
+server-side and return the finished trajectory (blended trend, 95% CI band,
+holdout R2/RMSE) as JSON, so a consuming dashboard never needs pandas or
+scikit-learn locally -- it only renders what this service already computed.
 """
 from __future__ import annotations
 
@@ -10,6 +16,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 
+import trajectory
 from clients import mlb_client, news_client, statcast_client
 
 app = FastAPI(title="MLB Data Service", version="1.0.0")
@@ -77,3 +84,31 @@ def statcast_batter(player_id: int, season: int = Query(...)) -> list[dict]:
 @app.get("/news")
 def news(keywords: list[str] = Query(...), limit: int = Query(10, ge=1, le=50)) -> list[dict]:
     return news_client.get_headlines(keywords, limit)
+
+
+@app.get("/players/{player_id}/hitter-trajectory")
+def hitter_trajectory(
+    player_id: int,
+    season: int = Query(...),
+    metric: str = Query("ops", pattern="^(avg|obp|slg|ops|homeRuns|rbi|strikeOuts|baseOnBalls)$"),
+) -> dict:
+    return trajectory.compute_hitter_trajectory(player_id, season, metric)
+
+
+@app.get("/players/{player_id}/pitcher-trajectory")
+def pitcher_trajectory(
+    player_id: int,
+    season: int = Query(...),
+    fallback_metric: str = Query("era", pattern="^(era|whip|strikeOuts|baseOnBalls|inningsPitched|earnedRuns)$"),
+) -> dict:
+    return trajectory.compute_pitcher_trajectory(player_id, season, fallback_metric)
+
+
+@app.get("/teams/{team_id}/trajectory")
+def team_trajectory(
+    team_id: int,
+    season: int = Query(...),
+    mode: str = Query("offense", pattern="^(offense|defense)$"),
+) -> dict:
+    _require_known_team(team_id)
+    return trajectory.compute_team_trajectory(team_id, season, mode)

@@ -1,6 +1,6 @@
 import numpy as np
 
-from models.regression import fit_regression, fit_trajectory_ensemble
+from regression import fit_regression, fit_trajectory_ensemble
 
 
 def test_single_point_returned_unchanged():
