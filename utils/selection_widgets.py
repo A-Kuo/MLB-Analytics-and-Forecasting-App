@@ -29,7 +29,6 @@ def _remove_id(ids_key: str, player_id: int) -> None:
 def _sync_from_multiselect(ids_key: str, ms_key: str) -> None:
     st.session_state[ids_key] = set(st.session_state[ms_key])
 
-
 def render_player_selection(prefix: str, bio_by_id: dict, candidate_ids_by_position: dict) -> set:
     """Multi-player picker: an "All Players" bulk checkbox, four
     position-group checkboxes (Battery/Infield/Outfield/Non-Fielders) each
@@ -62,6 +61,9 @@ def render_player_selection(prefix: str, bio_by_id: dict, candidate_ids_by_posit
     selected = st.session_state[ids_key]
 
     all_key = f"{prefix}_all_cb"
+    # Superset check (>=), not equality -- matches the group/position rule
+    # below and stays correctly checked even if `selected` still holds
+    # stale ids that fell out of `all_ids` after a Timeline change.
     st.session_state[all_key] = bool(all_ids) and selected >= all_ids
     st.checkbox("All Players", key=all_key, on_change=_sync_bulk_checkbox, args=(all_key, ids_key, all_ids))
 
