@@ -23,8 +23,30 @@ BIO_BY_ID = {
 OFFENSE_IDS = frozenset({1, 2})
 DEFENSE_IDS = frozenset({3, 4})
 ALL_IDS = OFFENSE_IDS | DEFENSE_IDS
+BROWSABLE_IDS = ALL_IDS
 
-result = render_player_selection("t", BIO_BY_ID, OFFENSE_IDS, DEFENSE_IDS, ALL_IDS)
+result = render_player_selection("t", BIO_BY_ID, OFFENSE_IDS, DEFENSE_IDS, ALL_IDS, BROWSABLE_IDS)
+st.session_state["result"] = result
+"""
+
+# A season-scoped roster narrower than the full offense/defense/all sets --
+# for the test verifying the multiselect's own option list is scoped to
+# this, not the wider bulk-selection candidate sets.
+NARROW_BROWSABLE_SCRIPT = """
+import streamlit as st
+from utils.selection_widgets import render_player_selection
+
+BIO_BY_ID = {
+    1: {"name": "Alice Hitter", "is_pitcher": False, "active_years_label": "2018-present"},
+    2: {"name": "Bob Hitter", "is_pitcher": False, "active_years_label": "2015-2022"},
+    3: {"name": "Cara Pitcher", "is_pitcher": True, "active_years_label": "2019-present"},
+}
+OFFENSE_IDS = frozenset({1, 2})
+DEFENSE_IDS = frozenset({3})
+ALL_IDS = OFFENSE_IDS | DEFENSE_IDS
+BROWSABLE_IDS = frozenset({1})  # only Alice is on this season's roster
+
+result = render_player_selection("t", BIO_BY_ID, OFFENSE_IDS, DEFENSE_IDS, ALL_IDS, BROWSABLE_IDS)
 st.session_state["result"] = result
 """
 
@@ -148,6 +170,27 @@ def test_edit_button_toggles_editor_closed_again():
     assert len(at.multiselect) == 1
     at.button(key="t_edit_btn").click().run()
     assert len(at.multiselect) == 0
+
+
+def test_multiselect_options_scoped_to_browsable_ids_not_full_roster():
+    # "Season selection filters the roster": the editor's own option list
+    # must be the narrower season-scoped set, not every id that happens to
+    # be in bio_by_id or a wider bulk-selection candidate set.
+    at = AppTest.from_string(NARROW_BROWSABLE_SCRIPT).run()
+    at.button(key="t_edit_btn").click().run()
+    ms = at.multiselect(key="t_multiselect")
+    assert ms.options == ["Alice Hitter (2018-present)"]
+
+
+def test_browsable_ids_still_allows_a_previously_selected_id_outside_it():
+    # A bulk-selected id from outside the season-scoped roster must remain
+    # a valid (already-selected) option rather than crashing/disappearing.
+    at = AppTest.from_string(NARROW_BROWSABLE_SCRIPT).run()
+    at.checkbox(key="t_defense_cb").set_value(True).run()  # selects id 3, outside BROWSABLE_IDS={1}
+    at.button(key="t_edit_btn").click().run()
+    ms = at.multiselect(key="t_multiselect")
+    assert set(ms.options) == {"Alice Hitter (2018-present)", "Cara Pitcher (2019-present)"}
+    assert ms.value == [3]
 
 
 def test_portrait_wall_empty_selection_shows_no_player_message():

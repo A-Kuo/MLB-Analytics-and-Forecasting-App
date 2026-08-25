@@ -51,3 +51,16 @@ def resolve_flag_view(
 
 def flag_badge_html(label: str) -> str:
     return f'<span style="{FLAG_BADGE_STYLE}">{html.escape(label)}</span>'
+
+
+def group_for_selection(selected_ids: frozenset, bio_by_id: dict) -> str:
+    """Predominant stat group ("hitting"/"pitching") for a multi-player
+    selection. Hitting and pitching metrics can't be meaningfully combined
+    (different scales, different meanings -- averaging AVG with ERA is
+    nonsensical), so the Aggregate KPI/Trend/Forecast sections show one
+    group's metrics for the whole selection: whichever type has more
+    players in it. Ties and an empty selection default to hitting.
+    """
+    pitcher_count = sum(1 for pid in selected_ids if bio_by_id.get(pid, {}).get("is_pitcher", False))
+    hitter_count = len(selected_ids) - pitcher_count
+    return "pitching" if pitcher_count > hitter_count else "hitting"

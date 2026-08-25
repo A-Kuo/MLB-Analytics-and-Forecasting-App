@@ -1,4 +1,4 @@
-from utils.player_selection import flag_badge_html, resolve_flag_view
+from utils.player_selection import flag_badge_html, group_for_selection, resolve_flag_view
 
 
 def test_individual_selection_shows_every_id_as_outlier():
@@ -100,3 +100,31 @@ def test_flag_badge_html_escapes_label():
     badge = flag_badge_html('<script>alert(1)</script>')
     assert "<script>" not in badge
     assert "&lt;script&gt;" in badge
+
+
+def _bio(pid, is_pitcher):
+    return {pid: {"is_pitcher": is_pitcher}}
+
+
+def test_group_for_selection_more_hitters_gives_hitting():
+    bio_by_id = {**_bio(1, False), **_bio(2, False), **_bio(3, True)}
+    assert group_for_selection(frozenset({1, 2, 3}), bio_by_id) == "hitting"
+
+
+def test_group_for_selection_more_pitchers_gives_pitching():
+    bio_by_id = {**_bio(1, False), **_bio(2, True), **_bio(3, True)}
+    assert group_for_selection(frozenset({1, 2, 3}), bio_by_id) == "pitching"
+
+
+def test_group_for_selection_tie_defaults_to_hitting():
+    bio_by_id = {**_bio(1, False), **_bio(2, True)}
+    assert group_for_selection(frozenset({1, 2}), bio_by_id) == "hitting"
+
+
+def test_group_for_selection_empty_selection_defaults_to_hitting():
+    assert group_for_selection(frozenset(), {}) == "hitting"
+
+
+def test_group_for_selection_missing_bio_treated_as_hitter():
+    # An id with no bio entry (data gap) defaults to not-a-pitcher.
+    assert group_for_selection(frozenset({99}), {}) == "hitting"

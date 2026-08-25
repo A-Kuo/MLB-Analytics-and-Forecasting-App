@@ -35,7 +35,12 @@ def _sync_from_multiselect(ids_key: str, ms_key: str) -> None:
 
 
 def render_player_selection(
-    prefix: str, bio_by_id: dict, offense_ids: frozenset, defense_ids: frozenset, all_ids: frozenset
+    prefix: str,
+    bio_by_id: dict,
+    offense_ids: frozenset,
+    defense_ids: frozenset,
+    all_ids: frozenset,
+    browsable_ids: frozenset,
 ) -> set:
     """Multi-select player picker: bulk Offense/Defense/All-Players
     checkboxes, removable flags (collapsed to one group flag when a bulk
@@ -44,6 +49,13 @@ def render_player_selection(
     (button-gated rather than an st.expander, since an all-time roster can
     run into the thousands of players -- see macroservice/roster_history.py
     -- and an expander still instantiates its child widgets while collapsed).
+
+    ``browsable_ids`` scopes the multiselect's own option list (e.g. the
+    Season dropdown's single-season roster, "Season selection filters the
+    roster") -- distinct from ``bio_by_id``, which covers the full all-time
+    roster and is used for every name/years lookup, since a bulk-selected
+    or previously-picked id can be outside the current browsable set.
+
     Returns the current set of selected player ids.
     """
     ids_key = f"{prefix}_selected_ids"
@@ -101,7 +113,7 @@ def render_player_selection(
         current = st.session_state[ids_key]
         if ms_key not in st.session_state or set(st.session_state[ms_key]) != current:
             st.session_state[ms_key] = sorted(current)
-        options = sorted(set(bio_by_id) | current)
+        options = sorted(browsable_ids | current)
         st.multiselect(
             "Add or remove individual players",
             options=options,
