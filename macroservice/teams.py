@@ -62,8 +62,7 @@ def get_schedule(team_id: int, season: int) -> list[dict]:
 @cached(ttl_seconds=GAME_DATA_TTL_SECONDS)
 def get_team_season_stats(team_id: int, season: int, group: str = "hitting") -> dict:
     """Team-aggregate season stats -- the team-level analogue of
-    players.get_season_stats, backing the "Offense"/"Defense" synthetic
-    team-aggregate entries in the player selector.
+    players.get_season_stats.
     """
     resp = request_with_backoff(
         "GET",
