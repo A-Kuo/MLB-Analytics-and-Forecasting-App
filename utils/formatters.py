@@ -43,3 +43,15 @@ def format_stat(value, key: str) -> str:
             return str(value)
 
     return str(value)
+
+
+def format_active_years(ranges: list[tuple[int, int | None]]) -> str:
+    """"2015–2020" for one span, "2015–2017, 2019–present" for several --
+    a player who left a team's roster and later returned. Today's roster
+    data source only ever produces a single span (see
+    macroservice/roster_history.py), but callers format through this
+    either way so a future multi-span data source needs no display changes.
+    """
+    if not ranges:
+        return ""
+    return ", ".join(f"{start}–{'present' if end is None else end}" for start, end in ranges)

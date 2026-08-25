@@ -1,5 +1,7 @@
-"""Portrait-wall card builder: one player's headshot + name + active-years,
-in a colored-outline card (red = offense, blue = defense).
+"""Portrait-wall card builder: one player's headshot + [position] name
+(years active), in a plain neutral-outline card -- no color coding, per
+Austin's request that the wall stay uncolored (the same naming convention
+appears, colored, on the selection flags -- see utils/player_selection.py).
 
 Structurally parallel to utils/news_cards.py -- escaped HTML for
 st.markdown(unsafe_allow_html=True), since player names/years are ultimately
@@ -12,22 +14,18 @@ from __future__ import annotations
 
 import html
 
-OFFENSE_BORDER_COLOR = "#C41E3A"  # red
-DEFENSE_BORDER_COLOR = "#1F4E9C"  # blue
+BORDER_COLOR = "#cccccc"
 CARD_WIDTH_PX = 110
 
 
-def player_card_html(name: str, active_years_label: str, portrait_url: str, is_pitcher: bool) -> str:
-    border_color = DEFENSE_BORDER_COLOR if is_pitcher else OFFENSE_BORDER_COLOR
-    safe_name = html.escape(name)
-    safe_years = html.escape(active_years_label)
+def player_card_html(label: str, portrait_url: str) -> str:
+    safe_label = html.escape(label)
     safe_portrait = html.escape(portrait_url)
     return (
-        f'<div style="border:2px solid {border_color};border-radius:8px;padding:6px;'
+        f'<div style="border:1px solid {BORDER_COLOR};border-radius:8px;padding:6px;'
         f'text-align:center;width:{CARD_WIDTH_PX}px;display:inline-block;vertical-align:top;">'
         f'<img src="{safe_portrait}" style="width:100%;border-radius:4px;">'
-        f'<div style="font-size:0.78rem;font-weight:600;margin-top:4px;">{safe_name}</div>'
-        f'<div style="font-size:0.7rem;color:#666;">{safe_years}</div>'
+        f'<div style="font-size:0.75rem;font-weight:600;margin-top:4px;">{safe_label}</div>'
         "</div>"
     )
 

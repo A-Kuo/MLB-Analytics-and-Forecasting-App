@@ -8,16 +8,14 @@ same render_dashboard_panel(...) call, just with different defaults and
 key_prefix-namespaced session state (see the k() helper) so neither panel's
 widgets collide with the other's.
 
-Within a panel: vertical Team -> Season -> Timeline -> Player selection.
-Season filters which season's roster is browsable in the Player
-multiselect; Timeline (a year-range control) is what the Offense/Defense/
-All-Players bulk-selection checkboxes resolve against (via
-macroservice.roster_history, an all-time-roster + date-overlap lookup, not
-the single Season snapshot) -- so it has to be selected before the Player
-step, not after. Selected players render as removable flags (individually,
-or collapsed to one "Offense/Defense/All Players" flag when a bulk group is
-fully selected -- see utils/selection_widgets.py) and as a scrollable
-portrait wall below.
+Within a panel: vertical Team -> Timeline -> Player selection. Timeline (a
+year-range control) is what the position-group bulk-selection checkboxes
+resolve against (via macroservice.roster_history, an all-time-roster +
+date-overlap lookup) -- moving it automatically re-filters which players
+are selectable, without a separate Season control (retired: it was
+redundant with Timeline). Selected players render as removable flags, each
+"[position] Name (years active)" (see utils/selection_widgets.py), and as
+a matching, uncolored portrait wall below.
 
 Calls the macroservice/ package in-process (see client.py) -- no separate
 server needs to be running.
@@ -53,6 +51,7 @@ from utils.formatters import format_stat
 from utils.metric_selection import metric_button_state_machine, reset_on_subject_change
 from utils.news_cards import merge_and_cap_keywords, news_card_html
 from utils.player_selection import group_for_selection
+from utils.positions import ALL_POSITIONS
 from utils.selection_widgets import render_player_selection, render_portrait_wall
 from utils.timeline import pushed_year_control, year_range_control
 
@@ -69,7 +68,6 @@ st.markdown(
 
 EARLIEST_SEASON = 1901  # AL founding -- MLB Stats API's season-stats coverage goes back this far
 FORECAST_MAX_YEAR = 2025
-DEFENSE_COLOR = "#C41E3A"
 REVEAL_FRAME_SECONDS = 0.06
 NEWS_LOOKBACK_DAYS = 7
 MAX_NEWS_KEYWORDS = 20
@@ -136,14 +134,7 @@ def render_dashboard_panel(
     # selected team's logo is shown here instead, next to the selector.
     team_logo_col.image(team["logo_url"], width=56)
 
-    st.subheader("Season")
     current_season = pd.Timestamp.today().year
-    season = st.selectbox(
-        "Season",
-        list(range(EARLIEST_SEASON, current_season + 1))[::-1],
-        label_visibility="collapsed",
-        key=k(key_prefix, "season_select"),
-    )
 
     st.subheader("Timeline")
     perf_start, perf_end = year_range_control(
@@ -151,27 +142,24 @@ def render_dashboard_panel(
     )
 
     st.subheader("Player")
-    season_roster = client.get_roster(team["id"], season)
     bio_roster = client.get_team_roster_with_active_years(team["id"])
     bio_by_id = {p["id"]: p for p in bio_roster}
-    # The season-scoped roster is what "Season selection filters the roster"
-    # means for browsing -- but bulk-selected ids from a wider Timeline range
-    # (or an earlier season) can fall outside it, so name lookups always go
-    # through the all-time bio_by_id map instead of this narrower one.
-    season_roster_ids = frozenset(p["id"] for p in season_roster)
 
-    offense_ids = frozenset(client.resolve_players_in_range(team["id"], perf_start, perf_end, "hitting"))
-    defense_ids = frozenset(client.resolve_players_in_range(team["id"], perf_start, perf_end, "pitching"))
-    all_ids = offense_ids | defense_ids
+    # Players active anywhere within the Timeline's range, broken out per
+    # position -- this both feeds the position-group checkboxes and scopes
+    # the multiselect editor's option list, so moving the Timeline
+    # automatically re-filters which players are selectable.
+    candidate_ids_by_position = {
+        position: frozenset(client.resolve_players_in_range(team["id"], perf_start, perf_end, frozenset({position})))
+        for position in ALL_POSITIONS
+    }
 
     # A selection from a different team is meaningless once you switch teams.
     if st.session_state.get(k(key_prefix, "selected_team_id")) != team["id"]:
         st.session_state[k(key_prefix, "selected_team_id")] = team["id"]
         st.session_state[k(key_prefix, "perf_selected_ids")] = set()
 
-    selected_ids = render_player_selection(
-        k(key_prefix, "perf"), bio_by_id, offense_ids, defense_ids, all_ids, season_roster_ids
-    )
+    selected_ids = render_player_selection(k(key_prefix, "perf"), bio_by_id, candidate_ids_by_position)
 
     st.caption("Selected Players")
     render_portrait_wall(selected_ids, bio_by_id, headshot_url)
@@ -400,7 +388,10 @@ def render_dashboard_panel(
         else:
             game_log_player_id = next(iter(selected_ids))
             game_log_group = "pitching" if bio_by_id.get(game_log_player_id, {}).get("is_pitcher") else "hitting"
-            splits = client.get_game_log_splits(game_log_player_id, season, game_log_group)
+            # No Season control anymore (retired as redundant with Timeline) --
+            # the game log is inherently one season's worth of data, so it
+            # uses the Timeline's end year as the nearest "current" reference.
+            splits = client.get_game_log_splits(game_log_player_id, perf_end, game_log_group)
             if splits:
                 rows = []
                 for split in splits:
@@ -426,8 +417,8 @@ def render_dashboard_panel(
     #
     # st.subheader("Team Trends")
     # offense_col, defense_col = st.columns(2)
-    # offense_payload = client.get_team_trajectory(team["id"], season, "offense")
-    # defense_payload = client.get_team_trajectory(team["id"], season, "defense")
+    # offense_payload = client.get_team_trajectory(team["id"], perf_end, "offense")
+    # defense_payload = client.get_team_trajectory(team["id"], perf_end, "defense")
     # with offense_col:
     #     if offense_payload["x_labels"]:
     #         st.plotly_chart(build_trajectory_figure(offense_payload, team["primary_color"]))

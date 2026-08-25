@@ -1,7 +1,7 @@
 """All-time roster history and date-range player resolution.
 
 Backs the player selector's "(active years)" annotations, the portrait
-wall, and the Offense/Defense/All-Players bulk-selection checkboxes --
+wall, and the position-group bulk-selection checkboxes --
 all of which need to know which players were ever on a team across an
 arbitrary year range, not just one season's snapshot roster
 (macroservice.teams.get_roster).
@@ -30,19 +30,33 @@ def get_alltime_roster(team_id: int) -> list[dict]:
     no season-range roster parameter (confirmed: startSeason/endSeason are
     silently ignored). No debut/active-years info here; see
     get_team_roster_with_active_years.
+
+    ``positions`` is a list rather than a single value so a future
+    multi-position data source needs no shape change here -- but this
+    endpoint returns exactly one roster entry per person (confirmed live),
+    so it's always a single-element list today. Generic "OF" (outfielder
+    with no LF/CF/RF specificity, ~11 entries across all-time rosters) is
+    normalized to all three outfield positions so they match the
+    position-checkbox filters.
     """
     resp = request_with_backoff("GET", f"{BASE_URL}/teams/{team_id}/roster", params={"rosterType": "allTime"})
     resp.raise_for_status()
     roster = resp.json().get("roster", [])
-    return [
-        {
-            "id": entry["person"]["id"],
-            "name": entry["person"]["fullName"],
-            "position": entry["position"]["abbreviation"],
-            "is_pitcher": entry["position"]["abbreviation"] == "P",
-        }
-        for entry in roster
-    ]
+    result = []
+    for entry in roster:
+        pos = entry["position"]["abbreviation"]
+        # Normalize generic "OF" to all three specific positions so they
+        # surface under any outfield position filter (LF/CF/RF).
+        positions = ["LF", "CF", "RF"] if pos == "OF" else [pos]
+        result.append(
+            {
+                "id": entry["person"]["id"],
+                "name": entry["person"]["fullName"],
+                "positions": positions,
+                "is_pitcher": pos == "P",
+            }
+        )
+    return result
 
 
 def _chunked(items: list, size: int):
@@ -74,45 +88,61 @@ def _get_people_batch(person_ids: tuple[int, ...]) -> dict[int, dict]:
     return result
 
 
-def _active_years_label(bio: dict) -> str:
+def _active_year_ranges(bio: dict) -> list[tuple[int, int | None]]:
     if bio["debut_year"] is None:
+        return []
+    return [(bio["debut_year"], bio["last_active_year"])]
+
+
+def _active_years_label(ranges: list[tuple[int, int | None]]) -> str:
+    if not ranges:
         return ""
-    end = "present" if bio["last_active_year"] is None else str(bio["last_active_year"])
-    return f"{bio['debut_year']}–{end}"
+    return ", ".join(f"{start}–{'present' if end is None else end}" for start, end in ranges)
 
 
 def get_team_roster_with_active_years(team_id: int) -> list[dict]:
     """get_alltime_roster() entries enriched with debut_year/
-    last_active_year/active/active_years_label -- backs both the roster
-    selector's "(active years)" suffix and resolve_players_in_range below.
+    last_active_year/active/active_year_ranges/active_years_label -- backs
+    both the roster selector's "(active years)" suffix and
+    resolve_players_in_range below.
+
+    ``active_year_ranges`` is a list of (start, end) spans rather than a
+    single one, so a player who left this team's roster and later returned
+    would render correctly -- but MLB Stats API only exposes one
+    career-wide debut/last-played date per person (not per team stint), so
+    every entry here has exactly one span today.
     """
     roster = get_alltime_roster(team_id)
     bios = _get_people_batch(tuple(entry["id"] for entry in roster))
     enriched = []
     for entry in roster:
         bio = bios.get(entry["id"], {"debut_year": None, "last_active_year": None, "active": False})
-        enriched.append({**entry, **bio, "active_years_label": _active_years_label(bio)})
+        ranges = _active_year_ranges(bio)
+        enriched.append(
+            {**entry, **bio, "active_year_ranges": ranges, "active_years_label": _active_years_label(ranges)}
+        )
     return enriched
 
 
-def resolve_players_in_range(team_id: int, start_year: int, end_year: int, group: str | None = None) -> set[int]:
+def resolve_players_in_range(
+    team_id: int, start_year: int, end_year: int, positions: frozenset[str] | None = None
+) -> set[int]:
     """Player ids whose [debut_year, last_active_year-or-now] overlaps
-    [start_year, end_year] -- the resolver behind the Offense/Defense/All
-    Players bulk-selection checkboxes, evaluated against the dashboard's
-    timeline range rather than a single season.
+    [start_year, end_year] -- the resolver behind the position-group
+    bulk-selection checkboxes, evaluated against the dashboard's timeline
+    range rather than a single season.
 
-    group="hitting"|"pitching" filters by position; None returns everyone.
-    A player with no known debut_year (data gap) is excluded rather than
-    guessed at.
+    ``positions``, when given, keeps only players holding at least one of
+    those position acronyms (e.g. {"1B", "2B", "3B", "SS"} for "Infield");
+    None returns everyone. A player with no known debut_year (data gap) is
+    excluded rather than guessed at.
     """
     roster = get_team_roster_with_active_years(team_id)
     matched: set[int] = set()
     for entry in roster:
         if entry["debut_year"] is None:
             continue
-        if group == "hitting" and entry["is_pitcher"]:
-            continue
-        if group == "pitching" and not entry["is_pitcher"]:
+        if positions is not None and not (set(entry["positions"]) & positions):
             continue
         last_year = entry["last_active_year"] if entry["last_active_year"] is not None else end_year
         if entry["debut_year"] <= end_year and last_year >= start_year:

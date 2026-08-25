@@ -1,56 +1,41 @@
-"""Pure, Streamlit-free player-selection logic: the "collapse to one flag"
-detection behind the Offense/Defense/All-Players bulk-selection checkboxes.
+"""Pure, Streamlit-free player-selection logic: per-player flag labels and
+the hitting/pitching group used to pick which metric list Aggregate KPI/
+Trend/Forecast show.
 
 Kept separate from the Streamlit/session-state wiring in app.py so it's
-directly unit-testable with plain Python sets -- see tests/test_player_selection.py.
+directly unit-testable with plain Python values -- see
+tests/test_player_selection.py.
 """
 from __future__ import annotations
 
 import html
-from dataclasses import dataclass
 
-FLAG_BADGE_STYLE = (
-    "display:inline-block;background:#eef1f5;border-radius:12px;"
-    "padding:4px 10px;font-size:0.85rem;font-weight:500;"
-)
+from utils.formatters import format_active_years
+from utils.positions import color_for_positions, format_position_tag
 
-
-@dataclass(frozen=True)
-class FlagView:
-    mode: str  # "all" | "offense" | "defense" | "individual"
-    label: str | None  # None when mode == "individual"
-    outliers: frozenset  # ids shown as their own individual flags alongside the collapsed label
+FLAG_BADGE_STYLE = "display:inline-block;border-radius:12px;padding:4px 10px;font-size:0.85rem;font-weight:500;"
 
 
-def resolve_flag_view(
-    selected_ids: frozenset,
-    offense_ids: frozenset,
-    defense_ids: frozenset,
-    all_ids: frozenset,
-) -> FlagView:
-    """Determines whether the current selection should collapse to one
-    "All Players"/"Offense Players"/"Defense Players" flag (+ any outlier
-    ids not covered by that group, shown as their own individual flags), or
-    just show every selected id as its own flag.
-
-    Priority: all > offense/defense > individual -- a selection that
-    happens to equal the full all-players set collapses to "All Players"
-    even though it's technically also a superset of offense and defense.
-    Empty candidate sets (e.g. a team/timeline combination with no
-    resolved offense players at all) never trigger a collapse -- an empty
-    selected_ids would otherwise vacuously satisfy "superset of empty set".
+def player_flag_label(bio: dict) -> str:
+    """"[SS] Player Name (2015–2020)" -- the shared naming convention used
+    in the player-selection dropdown, the selected-player flags, and the
+    portrait wall. Multi-position players render as "[SS, 2B] Name (...)";
+    a player with more than one active-year span (left and later rejoined
+    this team) renders as "Name (2015–2017, 2019–present)".
     """
-    if all_ids and selected_ids == all_ids:
-        return FlagView(mode="all", label="All Players", outliers=frozenset())
-    if offense_ids and selected_ids >= offense_ids:
-        return FlagView(mode="offense", label="Offense Players", outliers=selected_ids - offense_ids)
-    if defense_ids and selected_ids >= defense_ids:
-        return FlagView(mode="defense", label="Defense Players", outliers=selected_ids - defense_ids)
-    return FlagView(mode="individual", label=None, outliers=selected_ids)
+    positions = bio.get("positions") or []
+    name = bio.get("name", "Unknown")
+    years = format_active_years(bio.get("active_year_ranges", []))
+    tag = format_position_tag(positions)
+    return f"{tag} {name} ({years})" if years else f"{tag} {name}"
 
 
-def flag_badge_html(label: str) -> str:
-    return f'<span style="{FLAG_BADGE_STYLE}">{html.escape(label)}</span>'
+def flag_badge_html(label: str, color: str = "#555555") -> str:
+    return f'<span style="{FLAG_BADGE_STYLE}background:{color}22;border:1px solid {color};">{html.escape(label)}</span>'
+
+
+def player_flag_html(bio: dict) -> str:
+    return flag_badge_html(player_flag_label(bio), color_for_positions(bio.get("positions") or []))
 
 
 def group_for_selection(selected_ids: frozenset, bio_by_id: dict) -> str:

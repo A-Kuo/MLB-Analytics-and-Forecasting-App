@@ -29,12 +29,12 @@ def _roster_entry(person_id, name, position="OF"):
 @patch("macroservice.roster_history.request_with_backoff")
 def test_alltime_roster_parses_entries(mock_request):
     mock_request.return_value = _roster_response(
-        [_roster_entry(1, "Player One", "OF"), _roster_entry(2, "Player Two", "P")]
+        [_roster_entry(1, "Player One", "SS"), _roster_entry(2, "Player Two", "P")]
     )
     roster = roster_history.get_alltime_roster(1001)
     assert roster == [
-        {"id": 1, "name": "Player One", "position": "OF", "is_pitcher": False},
-        {"id": 2, "name": "Player Two", "position": "P", "is_pitcher": True},
+        {"id": 1, "name": "Player One", "positions": ["SS"], "is_pitcher": False},
+        {"id": 2, "name": "Player Two", "positions": ["P"], "is_pitcher": True},
     ]
 
 
@@ -44,6 +44,15 @@ def test_alltime_roster_requests_rostertype_alltime(mock_request):
     roster_history.get_alltime_roster(1002)
     _, kwargs = mock_request.call_args
     assert kwargs["params"] == {"rosterType": "allTime"}
+
+
+@patch("macroservice.roster_history.request_with_backoff")
+def test_alltime_roster_normalizes_generic_of_to_outfield_positions(mock_request):
+    mock_request.return_value = _roster_response([_roster_entry(1, "Generic Player", "OF")])
+    roster = roster_history.get_alltime_roster(9999)  # Use a different team_id to bypass cache
+    assert roster == [
+        {"id": 1, "name": "Generic Player", "positions": ["LF", "CF", "RF"], "is_pitcher": False},
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -81,20 +90,36 @@ def test_people_batch_still_active_has_no_last_active_year(mock_request):
 
 
 # ---------------------------------------------------------------------------
-# _active_years_label
+# _active_year_ranges / _active_years_label
 # ---------------------------------------------------------------------------
 
 
+def test_active_year_ranges_still_active():
+    assert roster_history._active_year_ranges({"debut_year": 2022, "last_active_year": None}) == [(2022, None)]
+
+
+def test_active_year_ranges_retired():
+    assert roster_history._active_year_ranges({"debut_year": 1998, "last_active_year": 2004}) == [(1998, 2004)]
+
+
+def test_active_year_ranges_missing_debut():
+    assert roster_history._active_year_ranges({"debut_year": None, "last_active_year": None}) == []
+
+
 def test_active_years_label_still_active():
-    assert roster_history._active_years_label({"debut_year": 2022, "last_active_year": None}) == "2022–present"
+    assert roster_history._active_years_label([(2022, None)]) == "2022–present"
 
 
 def test_active_years_label_retired():
-    assert roster_history._active_years_label({"debut_year": 1998, "last_active_year": 2004}) == "1998–2004"
+    assert roster_history._active_years_label([(1998, 2004)]) == "1998–2004"
 
 
-def test_active_years_label_missing_debut():
-    assert roster_history._active_years_label({"debut_year": None, "last_active_year": None}) == ""
+def test_active_years_label_no_ranges():
+    assert roster_history._active_years_label([]) == ""
+
+
+def test_active_years_label_multiple_ranges():
+    assert roster_history._active_years_label([(1990, 1994), (1998, None)]) == "1990–1994, 1998–present"
 
 
 # ---------------------------------------------------------------------------
@@ -105,18 +130,19 @@ def test_active_years_label_missing_debut():
 @patch("macroservice.roster_history._get_people_batch")
 @patch("macroservice.roster_history.get_alltime_roster")
 def test_roster_with_active_years_merges_bio_data(mock_alltime, mock_batch):
-    mock_alltime.return_value = [{"id": 1, "name": "Player One", "position": "OF", "is_pitcher": False}]
+    mock_alltime.return_value = [{"id": 1, "name": "Player One", "positions": ["OF"], "is_pitcher": False}]
     mock_batch.return_value = {1: {"debut_year": 2015, "last_active_year": None, "active": True}}
     enriched = roster_history.get_team_roster_with_active_years(1001)
     assert enriched == [
         {
             "id": 1,
             "name": "Player One",
-            "position": "OF",
+            "positions": ["OF"],
             "is_pitcher": False,
             "debut_year": 2015,
             "last_active_year": None,
             "active": True,
+            "active_year_ranges": [(2015, None)],
             "active_years_label": "2015–present",
         }
     ]
@@ -125,10 +151,11 @@ def test_roster_with_active_years_merges_bio_data(mock_alltime, mock_batch):
 @patch("macroservice.roster_history._get_people_batch")
 @patch("macroservice.roster_history.get_alltime_roster")
 def test_roster_with_active_years_handles_missing_bio(mock_alltime, mock_batch):
-    mock_alltime.return_value = [{"id": 1, "name": "Ghost Player", "position": "OF", "is_pitcher": False}]
+    mock_alltime.return_value = [{"id": 1, "name": "Ghost Player", "positions": ["OF"], "is_pitcher": False}]
     mock_batch.return_value = {}  # bio lookup returned nothing for this id
     enriched = roster_history.get_team_roster_with_active_years(1001)
     assert enriched[0]["debut_year"] is None
+    assert enriched[0]["active_year_ranges"] == []
     assert enriched[0]["active_years_label"] == ""
 
 
@@ -137,74 +164,86 @@ def test_roster_with_active_years_handles_missing_bio(mock_alltime, mock_batch):
 # ---------------------------------------------------------------------------
 
 
-def _entry(id_, is_pitcher, debut_year, last_active_year):
+def _entry(id_, positions, debut_year, last_active_year):
     return {
         "id": id_,
         "name": f"Player {id_}",
-        "position": "P" if is_pitcher else "OF",
-        "is_pitcher": is_pitcher,
+        "positions": positions,
+        "is_pitcher": "P" in positions,
         "debut_year": debut_year,
         "last_active_year": last_active_year,
         "active": last_active_year is None,
+        "active_year_ranges": [(debut_year, last_active_year)] if debut_year is not None else [],
         "active_years_label": "",
     }
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_excludes_player_entirely_before_range(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 1990, 1995)]
+    mock_roster.return_value = [_entry(1, ["OF"], 1990, 1995)]
     assert roster_history.resolve_players_in_range(1001, 2000, 2010) == set()
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_excludes_player_entirely_after_range(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2015, 2020)]
+    mock_roster.return_value = [_entry(1, ["OF"], 2015, 2020)]
     assert roster_history.resolve_players_in_range(1001, 2000, 2010) == set()
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_includes_player_spanning_range(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 1995, 2005)]
+    mock_roster.return_value = [_entry(1, ["OF"], 1995, 2005)]
     assert roster_history.resolve_players_in_range(1001, 2000, 2010) == {1}
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_includes_still_active_player_debuted_before_range_ends(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2018, None)]
+    mock_roster.return_value = [_entry(1, ["OF"], 2018, None)]
     assert roster_history.resolve_players_in_range(1001, 2015, 2020) == {1}
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_excludes_player_who_debuts_after_range_even_if_still_active(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2025, None)]
+    mock_roster.return_value = [_entry(1, ["OF"], 2025, None)]
     assert roster_history.resolve_players_in_range(1001, 2015, 2020) == set()
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_excludes_players_with_no_known_debut_year(mock_roster):
-    mock_roster.return_value = [_entry(1, False, None, None)]
+    mock_roster.return_value = [_entry(1, ["OF"], None, None)]
     assert roster_history.resolve_players_in_range(1001, 2000, 2010) == set()
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
-def test_resolve_filters_by_group_hitting(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2000, 2010), _entry(2, True, 2000, 2010)]
-    assert roster_history.resolve_players_in_range(1001, 2000, 2010, group="hitting") == {1}
+def test_resolve_filters_by_single_position(mock_roster):
+    mock_roster.return_value = [_entry(1, ["OF"], 2000, 2010), _entry(2, ["P"], 2000, 2010)]
+    assert roster_history.resolve_players_in_range(1001, 2000, 2010, positions=frozenset({"OF"})) == {1}
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
-def test_resolve_filters_by_group_pitching(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2000, 2010), _entry(2, True, 2000, 2010)]
-    assert roster_history.resolve_players_in_range(1001, 2000, 2010, group="pitching") == {2}
+def test_resolve_filters_by_position_group_set(mock_roster):
+    mock_roster.return_value = [
+        _entry(1, ["1B"], 2000, 2010),
+        _entry(2, ["SS"], 2000, 2010),
+        _entry(3, ["P"], 2000, 2010),
+    ]
+    infield = frozenset({"1B", "2B", "3B", "SS"})
+    assert roster_history.resolve_players_in_range(1001, 2000, 2010, positions=infield) == {1, 2}
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
-def test_resolve_no_group_filter_returns_everyone_in_range(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2000, 2010), _entry(2, True, 2000, 2010)]
+def test_resolve_matches_multi_position_player_on_any_listed_position(mock_roster):
+    mock_roster.return_value = [_entry(1, ["2B", "OF"], 2000, 2010)]
+    assert roster_history.resolve_players_in_range(1001, 2000, 2010, positions=frozenset({"OF"})) == {1}
+
+
+@patch("macroservice.roster_history.get_team_roster_with_active_years")
+def test_resolve_no_position_filter_returns_everyone_in_range(mock_roster):
+    mock_roster.return_value = [_entry(1, ["OF"], 2000, 2010), _entry(2, ["P"], 2000, 2010)]
     assert roster_history.resolve_players_in_range(1001, 2000, 2010) == {1, 2}
 
 
 @patch("macroservice.roster_history.get_team_roster_with_active_years")
 def test_resolve_same_year_range_matches_players_active_that_year(mock_roster):
-    mock_roster.return_value = [_entry(1, False, 2000, 2010)]
+    mock_roster.return_value = [_entry(1, ["OF"], 2000, 2010)]
     assert roster_history.resolve_players_in_range(1001, 2005, 2005) == {1}

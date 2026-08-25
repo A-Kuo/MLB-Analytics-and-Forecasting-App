@@ -32,8 +32,10 @@ def get_team_roster_with_active_years(team_id: int) -> list[dict]:
 
 
 @st.cache_data(ttl=3600)
-def resolve_players_in_range(team_id: int, start_year: int, end_year: int, group: str | None = None) -> set[int]:
-    return roster_history.resolve_players_in_range(team_id, start_year, end_year, group)
+def resolve_players_in_range(
+    team_id: int, start_year: int, end_year: int, positions: frozenset[str] | None = None
+) -> set[int]:
+    return roster_history.resolve_players_in_range(team_id, start_year, end_year, positions)
 
 
 @st.cache_data(ttl=60)
