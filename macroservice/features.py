@@ -14,6 +14,7 @@ PITCHER_ROLLING_WINDOW = 5       # appearances -- legacy ERA/WHIP fallback windo
 CSW_ROLLING_WINDOW = 25          # pitches -- defensive (CSW%) trajectory engine
 MOMENTUM_WINDOW_HITTER = 3
 MOMENTUM_WINDOW_PITCHER_PITCHES = 5
+HARD_HIT_LAUNCH_SPEED_MPH = 95.0  # Statcast's own hard-hit threshold
 
 # Statcast `description` values that count as a swing, a whiff, and a called
 # strike + whiff (CSW), respectively.
@@ -54,7 +55,7 @@ def build_hitter_feature_frame(game_log: pd.DataFrame, batted_balls: pd.DataFram
             .agg(
                 ev=("launch_speed", "mean"),
                 xba=("estimated_ba_using_speedangle", "mean"),
-                hard_hit=("launch_speed", lambda s: float((s >= 95).mean())),
+                hard_hit=("launch_speed", lambda s: float((s >= HARD_HIT_LAUNCH_SPEED_MPH).mean())),
             )
             .reset_index()
         )

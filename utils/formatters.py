@@ -2,9 +2,15 @@
 from __future__ import annotations
 
 # Rate stats conventionally printed without the leading zero, e.g. ".287".
-_LEADING_ZERO_DROPPED = {"avg", "obp", "slg", "ops"}
+# xba is on the same batting-average scale, so it joins this bucket rather
+# than the percent bucket below.
+_LEADING_ZERO_DROPPED = {"avg", "obp", "slg", "ops", "xba"}
 # Rate stats conventionally printed to two decimal places, e.g. "3.45".
 _TWO_DECIMAL = {"era", "whip", "strikeoutsPer9Inn", "walksPer9Inn", "fip"}
+# Statcast fractions (0-1) printed as a percentage, e.g. "34.2%".
+_PERCENT = {"hardHitPct", "barrelPct", "cswPct", "whiffPct", "chasePct"}
+# Statcast velocities, e.g. "94.3 mph".
+_MPH = {"avgExitVelocity", "avgVelocity"}
 
 
 def format_stat(value, key: str) -> str:
@@ -21,6 +27,18 @@ def format_stat(value, key: str) -> str:
     if key in _TWO_DECIMAL:
         try:
             return f"{float(value):.2f}"
+        except (TypeError, ValueError):
+            return str(value)
+
+    if key in _PERCENT:
+        try:
+            return f"{float(value) * 100:.1f}%"
+        except (TypeError, ValueError):
+            return str(value)
+
+    if key in _MPH:
+        try:
+            return f"{float(value):.1f} mph"
         except (TypeError, ValueError):
             return str(value)
 

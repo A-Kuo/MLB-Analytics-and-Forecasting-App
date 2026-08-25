@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from macroservice import news, players, teams, trajectories
+from macroservice import news, players, statcast_season, teams, trajectories
+from utils.filters import STATCAST_METRIC_KEYS
 
 
 @st.cache_data(ttl=3600)
@@ -47,6 +48,25 @@ def get_season_series(player_id: int, metric: str, group: str, start_year: int, 
 @st.cache_data(ttl=60)
 def get_team_season_series(team_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
     return teams.get_team_season_series(team_id, metric, group, start_year, end_year)
+
+
+@st.cache_data(ttl=60)
+def get_unified_series(player_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
+    """Routes to the Statcast-backed series (macroservice.statcast_season)
+    when ``metric`` is a Statcast-derived key, else the plain MLB Stats API
+    series (players.get_season_series) -- callers never need to know which
+    backend a given metric key came from. Player-scoped only: aggregating
+    Statcast metrics across a team/multi-player selection happens by
+    combining several calls to this function, one per player, at the
+    call-site aggregation layer -- there's no separate team-level Statcast
+    fetch, since every Statcast metric is a rate stat and the aggregation
+    rule is already "mean of each selected player's own value."
+    """
+    if metric in STATCAST_METRIC_KEYS:
+        if group == "pitching":
+            return statcast_season.get_pitcher_statcast_series(player_id, metric, start_year, end_year)
+        return statcast_season.get_hitter_statcast_series(player_id, metric, start_year, end_year)
+    return players.get_season_series(player_id, metric, group, start_year, end_year)
 
 
 @st.cache_data(ttl=300)

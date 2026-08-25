@@ -16,6 +16,15 @@ HITTING_METRICS: list[tuple[str, str]] = [
     ("rbi", "RBI"),
     ("strikeOuts", "K"),
     ("baseOnBalls", "BB"),
+    # Statcast-derived (macroservice/statcast_season.py), 2015+ only --
+    # folded into the same list rather than a separate section so every
+    # checkbox panel/aggregation path handles them uniformly; the "(Statcast,
+    # 2015+)" suffix on the full name (below) is what self-documents the
+    # coverage gap, not a UI grouping.
+    ("xba", "xBA"),
+    ("avgExitVelocity", "EV"),
+    ("hardHitPct", "Hard-Hit%"),
+    ("barrelPct", "Barrel%"),
 ]
 
 PITCHING_METRICS: list[tuple[str, str]] = [
@@ -25,7 +34,28 @@ PITCHING_METRICS: list[tuple[str, str]] = [
     ("baseOnBalls", "BB"),
     ("inningsPitched", "IP"),
     ("earnedRuns", "ER"),
+    # Statcast-derived, 2015+ only -- see note above.
+    ("cswPct", "CSW%"),
+    ("whiffPct", "Whiff%"),
+    ("chasePct", "Chase%"),
+    ("avgVelocity", "Velo"),
 ]
+
+# Metric keys backed by macroservice/statcast_season.py rather than the
+# plain MLB Stats API season-stats endpoint -- lets client.py's dispatcher
+# route each metric to the right backend without every call site needing
+# to know which one a given key came from.
+STATCAST_METRIC_KEYS: frozenset[str] = frozenset(
+    {"xba", "avgExitVelocity", "hardHitPct", "barrelPct", "cswPct", "whiffPct", "chasePct", "avgVelocity"}
+)
+
+# Statcast percentages/rates sit on the same small 0-1-ish scale as the
+# plain-API rate stats (avg/obp/.../era/whip) -- but avgExitVelocity/
+# avgVelocity are ~85-105 mph, an entirely different scale that's actually
+# closer to the counting stats (HR, RBI, ...) than to a 0-1 rate. Excluding
+# them here keeps them off the rate axis so they don't flatten into the
+# baseline next to a .300 batting average.
+_STATCAST_RATE_METRICS: frozenset[str] = STATCAST_METRIC_KEYS - {"avgExitVelocity", "avgVelocity"}
 
 # Columns pulled from the per-game log for the expandable game-log table.
 GAME_LOG_COLUMNS: dict[str, list[str]] = {
@@ -49,12 +79,22 @@ METRIC_FULL_NAMES: dict[str, str] = {
     "whip": "Walks + Hits per Inning Pitched",
     "inningsPitched": "Innings Pitched",
     "earnedRuns": "Earned Runs",
+    "xba": "Expected Batting Average (xBA, Statcast 2015+)",
+    "avgExitVelocity": "Average Exit Velocity (Statcast 2015+)",
+    "hardHitPct": "Hard-Hit% (Statcast 2015+)",
+    "barrelPct": "Barrel% (Statcast 2015+)",
+    "cswPct": "Called Strike + Whiff % (CSW%, Statcast 2015+)",
+    "whiffPct": "Whiff% (Statcast 2015+)",
+    "chasePct": "Chase% (Statcast 2015+)",
+    "avgVelocity": "Average Velocity (Statcast 2015+)",
 }
 
 # Rate stats sit on a 0-ish to low-single-digit scale; counting stats run to
 # the hundreds. Plotting both against one y-axis flattens the rate lines into
 # the baseline, so the trend chart splits them across two axes.
-RATE_METRICS: frozenset[str] = frozenset({"avg", "obp", "slg", "ops", "era", "whip"})
+RATE_METRICS: frozenset[str] = frozenset(
+    {"avg", "obp", "slg", "ops", "era", "whip"} | _STATCAST_RATE_METRICS
+)
 
 
 def stat_group_for_position(position_abbr: str) -> str:
