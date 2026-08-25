@@ -17,10 +17,12 @@ import client
 from chart import build_trajectory_figure
 from utils.filters import GAME_LOG_COLUMNS, metrics_for_group, stat_group_for_position
 from utils.formatters import format_stat
+from utils.timeline import pushed_year_control, year_range_control
 
 st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide")
 
 EARLIEST_SEASON = 2015
+FORECAST_MAX_YEAR = 2025
 DEFENSE_COLOR = "#C41E3A"
 
 teams = client.get_teams()
@@ -64,6 +66,26 @@ with player_header_col:
     portrait_col.image(client.get_headshot_url(player["id"]), width=72)
     label_col.markdown(f"### {player_name}")
     label_col.caption(player["position"])
+
+with st.expander("Timeline preview (Phase 3 -- not yet wired to a graph)", expanded=True):
+    st.caption(
+        "Native two-handle slider + synced number inputs. Same-year overlap "
+        "is allowed; the number boxes are the reliable disambiguator when "
+        "both handles land on one year."
+    )
+    perf_start, perf_end = year_range_control("perf", EARLIEST_SEASON, current_season, label="Performance year range")
+
+    st.caption(
+        "Scrubbers 1 and 2 below mirror the range above (read-only, greyed "
+        "out); scrubber 3 sets the forecast horizon and gets pushed forward "
+        "if scrubber 2 moves past it, but never pushes back."
+    )
+    mirror_start_col, mirror_end_col = st.columns(2)
+    mirror_start_col.number_input("Scrubber 1 (train start)", value=perf_start, disabled=True)
+    mirror_end_col.number_input("Scrubber 2 (train end)", value=perf_end, disabled=True)
+    forecast_end = pushed_year_control(
+        "forecast", perf_end, FORECAST_MAX_YEAR, slider_floor_year=EARLIEST_SEASON, label="Scrubber 3 (forecast horizon)"
+    )
 
 st.subheader("Season KPIs")
 season_stats = client.get_season_stats(player["id"], season, group)
