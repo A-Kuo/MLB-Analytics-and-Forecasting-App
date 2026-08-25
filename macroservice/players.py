@@ -44,3 +44,25 @@ def get_season_stats(player_id: int, season: int, group: str = "hitting") -> dic
     stats = resp.json().get("stats", [])
     splits = stats[0].get("splits", []) if stats else []
     return splits[0]["stat"] if splits else {}
+
+
+def get_season_series(player_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
+    """Annual ``metric`` values for each year in [start_year, end_year],
+    skipping years with no recorded value.
+
+    No regression fitting happens here -- each year is one already-cached
+    get_season_stats() call, so this is the fast path behind the dashboard's
+    "Visualize" flow (year-by-year actuals only, no ensemble fit).
+    """
+    years: list[int] = []
+    values: list[float] = []
+    for year in range(start_year, end_year + 1):
+        stat = get_season_stats(player_id, year, group).get(metric)
+        if stat is None:
+            continue
+        try:
+            values.append(float(stat))
+        except (TypeError, ValueError):
+            continue
+        years.append(year)
+    return {"years": years, "values": values}

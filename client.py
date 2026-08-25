@@ -38,6 +38,11 @@ def get_game_log_splits(player_id: int, season: int, group: str) -> list[dict]:
     return players.get_game_log(player_id, season, group)
 
 
+@st.cache_data(ttl=60)
+def get_season_series(player_id: int, metric: str, group: str, start_year: int, end_year: int) -> dict:
+    return players.get_season_series(player_id, metric, group, start_year, end_year)
+
+
 @st.cache_data(ttl=300)
 def get_hitter_trajectory(player_id: int, season: int, metric: str) -> dict:
     return trajectories.compute_hitter_trajectory(player_id, season, metric)
