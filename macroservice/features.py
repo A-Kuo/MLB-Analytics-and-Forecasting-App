@@ -1,9 +1,8 @@
 """Feature engineering for the hitter/pitcher/team trajectory models.
 
 Builds the multivariate feature matrices consumed by
-``models.regression.fit_trajectory_ensemble``. Kept separate from
-``api.mlb_client`` / ``api.statcast_client`` (raw data) and
-``models.regression`` (the model itself).
+``regression.fit_trajectory_ensemble``. Takes DataFrames already assembled
+by ``transform.py`` from the raw API JSON responses.
 """
 from __future__ import annotations
 

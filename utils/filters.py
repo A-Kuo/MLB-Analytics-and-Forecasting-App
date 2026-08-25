@@ -1,9 +1,9 @@
 """Offense/defense stat-group logic for an individually selected player.
 
-v1 scope is intentionally player-only: given the roster position of the
-selected player, decide whether they're viewed as a hitter or a pitcher and
-which metric keys apply. Team-aggregate offense/defense splitting is v1.1
-(see README roadmap).
+Given the roster position of the selected player, decide whether they're
+viewed as a hitter or a pitcher and which metric keys apply. A copy of this
+module lives in data_service/ too, so the microservice can make the same
+hitting/pitching decision server-side without importing from the dashboard.
 """
 from __future__ import annotations
 

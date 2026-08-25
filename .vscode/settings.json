@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:/GitHub/Full MLB Analytics Dashboard with Regression and News Feed\"; python app\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd \"c:/GitHub/Full MLB Analytics Dashboard with Regression and News Feed\"; C:/ProgramData/anaconda3/envs/dev-env/python\\.exe -m pip install -r requirements\\.txt$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

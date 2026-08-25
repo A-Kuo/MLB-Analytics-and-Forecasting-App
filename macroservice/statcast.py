@@ -1,21 +1,23 @@
 """Baseball Savant (Statcast) client: pitch-level pitcher data, batted-ball events.
 
 Baseball Savant has no documented, stable public API -- this hits its CSV
-search endpoint directly, parsed with the standard library's ``csv`` module
-so this service carries no pandas/numpy dependency.
+search endpoint directly, parsed with the standard library's ``csv`` module.
 """
 from __future__ import annotations
 
 import csv
 import io
 
-from backoff import request_with_backoff
+from macroservice.backoff import request_with_backoff
+from macroservice.caching import cached
 
 SEARCH_URL = "https://baseballsavant.mlb.com/statcast_search/csv"
 STATCAST_TIMEOUT_SECONDS = 30.0
+STATCAST_TTL_SECONDS = 60 * 60
 _COMMON_PARAMS = {"all": "true", "hfGT": "R|", "type": "details"}
 
 
+@cached(ttl_seconds=STATCAST_TTL_SECONDS)
 def _fetch(player_type: str, player_id: int, season: int) -> list[dict]:
     lookup_key = "pitchers_lookup[]" if player_type == "pitcher" else "batters_lookup[]"
     params = {

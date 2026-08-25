@@ -6,15 +6,18 @@ import os
 import feedparser
 from dotenv import load_dotenv
 
-from backoff import request_with_backoff
+from macroservice.backoff import request_with_backoff
+from macroservice.caching import cached
 
 load_dotenv()
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 NEWS_API_URL = "https://newsapi.org/v2/everything"
 RSS_FALLBACK_URL = "https://www.mlb.com/feeds/news/rss.xml"
+NEWS_TTL_SECONDS = 5 * 60
 
 
+@cached(ttl_seconds=NEWS_TTL_SECONDS)
 def get_headlines(keywords: list[str], limit: int = 10) -> list[dict]:
     if NEWS_API_KEY:
         query = " OR ".join(f'"{k}"' for k in keywords)
