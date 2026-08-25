@@ -1,12 +1,15 @@
 """Tests for the Forecast section's checkbox/compute state machine.
 
-This mirrors (as a minimal standalone script) the exact session-state
-pattern used in app.py's Forecast section: compute only on button press;
-unchecking a metric drops it from the display without recomputing; checking
-a metric that was never computed clears the display until Forecast is
-pressed again. AppTest is used because this behavior lives entirely in
-Streamlit's session_state/callback machinery, not in a plain function --
-see tests/test_timeline.py for the same rationale.
+This exercises the real utils.metric_selection.metric_button_state_machine
+helper (the same one app.py's Forecast section and Performance Trend's
+Visualize button both use -- see tests/test_metric_selection.py for direct
+coverage of the helper itself) via a minimal standalone script matching
+app.py's Forecast wiring: compute only on button press; unchecking a metric
+drops it from the display without recomputing; checking a metric that was
+never computed clears the display until Forecast is pressed again. AppTest
+is used because this behavior lives entirely in Streamlit's session_state/
+callback machinery, not in a plain function -- see tests/test_timeline.py
+for the same rationale.
 """
 from __future__ import annotations
 
@@ -14,25 +17,23 @@ from streamlit.testing.v1 import AppTest
 
 SCRIPT = """
 import streamlit as st
+from utils.metric_selection import metric_button_state_machine
 
 METRICS = ["era", "whip", "strikeOuts"]
 
 with st.container():
-    selected = [k for k in METRICS if st.checkbox(k, key=f"cb_{k}")]
+    selected = [(k, k) for k in METRICS if st.checkbox(k, key=f"cb_{k}")]
 pressed = st.button("Forecast", key="forecast_btn")
 
-current_keys = set(selected)
-computed = st.session_state.get("computed", {})
+fetch_count = st.session_state.get("fetch_count", 0)
 
-if pressed and selected:
-    computed = {k: f"payload_for_{k}" for k in selected}
-    st.session_state["computed"] = computed
-    st.session_state["fetch_count"] = st.session_state.get("fetch_count", 0) + len(selected)
-elif current_keys - computed.keys():
-    computed = {}
-    st.session_state["computed"] = {}
+def compute(key):
+    global fetch_count
+    fetch_count += 1
+    return f"payload_for_{key}"
 
-display = {k: computed[k] for k in current_keys if k in computed}
+display = metric_button_state_machine(pressed, selected, "computed", "acronyms", compute)
+st.session_state["fetch_count"] = fetch_count
 st.session_state["display_keys"] = sorted(display)
 """
 

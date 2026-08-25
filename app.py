@@ -34,6 +34,7 @@ import client
 from macroservice.players import headshot_url
 from utils.filters import GAME_LOG_COLUMNS, full_name_for_metric, metrics_for_group
 from utils.formatters import format_stat
+from utils.metric_selection import metric_button_state_machine, reset_on_subject_change
 from utils.news_cards import news_card_html
 from utils.player_selection import group_for_selection
 from utils.selection_widgets import render_player_selection, render_portrait_wall
@@ -50,8 +51,13 @@ teams = client.get_teams()
 team_by_name = {team["name"]: team for team in teams}
 
 st.subheader("Team")
-team_name = st.selectbox("Team", sorted(team_by_name), filter_mode="fuzzy", label_visibility="collapsed")
+team_logo_col, team_select_col = st.columns([1, 8])
+team_name = team_select_col.selectbox("Team", sorted(team_by_name), filter_mode="fuzzy", label_visibility="collapsed")
 team = team_by_name[team_name]
+# st.selectbox renders plain text per option -- Streamlit's native widget
+# has no way to embed an image inside the dropdown list itself, so the
+# selected team's logo is shown here instead, next to the selector.
+team_logo_col.image(team["logo_url"], width=56)
 
 st.subheader("Season")
 current_season = pd.Timestamp.today().year
@@ -118,53 +124,83 @@ if pitcher_count and hitter_count:
     )
 
 st.subheader("Aggregate KPI")
+# Button-gated: KPI has no per-metric checkboxes (every metric for the
+# current group is always shown together), so it only needs the
+# subject-change half of the shared state machine -- switching team/players/
+# group/timeline invalidates the last Calculate press rather than silently
+# showing KPIs for a different subject.
+kpi_subject_key = (team["id"], frozenset(selected_ids), selected_group, perf_start, perf_end)
+reset_on_subject_change("kpi_subject", kpi_subject_key, {"kpi_values": None})
+
+kpi_pressed = st.button("Calculate", key="kpi_calculate_btn", type="primary", disabled=not selected_ids)
+if kpi_pressed:
+    with st.spinner("Calculating aggregate KPIs..."):
+        st.session_state["kpi_values"] = {
+            key: client.get_aggregate_kpi(selected_tuple, key, selected_group, perf_start, perf_end)
+            for key, _ in metrics_for_group(selected_group)
+        }
+
+kpi_values = st.session_state.get("kpi_values")
 if not selected_ids:
-    st.info("Select one or more players to see aggregate KPIs.")
+    st.info("Select one or more players, then press Calculate.")
+elif kpi_values is None:
+    st.info("Press Calculate to compute aggregate KPIs for the current selection.")
 else:
     kpi_defs = metrics_for_group(selected_group)
     kpi_cols = st.columns(len(kpi_defs))
     for col, (key, acronym) in zip(kpi_cols, kpi_defs):
-        value = client.get_aggregate_kpi(selected_tuple, key, selected_group, perf_start, perf_end)
-        col.metric(f"{full_name_for_metric(key)} ({acronym})", format_stat(value, key))
+        col.metric(f"{full_name_for_metric(key)} ({acronym})", format_stat(kpi_values.get(key), key))
 
 st.subheader("Performance Trend")
+# Subject key deliberately mirrors Forecast's below (team + selected players
+# + group only, not the timeline range) -- the two panels share the same
+# button-gated helper and are meant to behave identically.
+trend_subject_key = (team["id"], frozenset(selected_ids), selected_group)
+reset_on_subject_change("trend_subject", trend_subject_key, {"trend_computed": {}, "trend_acronyms": {}})
+trend_computed_keys = set(st.session_state.get("trend_computed", {}))
+
 trend_metric_panel_col, trend_graph_col = st.columns([1, 3])
 with trend_metric_panel_col:
     st.caption("Metrics")
     with st.container(height=240, border=True):
-        trend_selected_metrics = [
-            (key, acronym)
-            for key, acronym in metrics_for_group(selected_group)
-            if st.checkbox(full_name_for_metric(key), key=f"perf_trend_metric_{key}")
-        ]
+        trend_selected_metrics = []
+        for key, acronym in metrics_for_group(selected_group):
+            # A green dot marks metrics currently factored into the graph
+            # below, distinct from just being checked (e.g. a newly checked
+            # metric has no dot until Visualize is pressed again).
+            label = full_name_for_metric(key)
+            if key in trend_computed_keys:
+                label = f":green[●] {label}"
+            if st.checkbox(label, key=f"perf_trend_metric_{key}"):
+                trend_selected_metrics.append((key, acronym))
+    trend_pressed = st.button("Visualize", key="trend_visualize_btn", type="primary")
 
 with trend_graph_col:
+    trend_display_metrics = metric_button_state_machine(
+        trend_pressed and bool(selected_ids),
+        trend_selected_metrics,
+        "trend_computed",
+        "trend_acronyms",
+        lambda key: client.get_aggregate_series(selected_tuple, key, selected_group, perf_start, perf_end),
+        spinner_message="Pulling season stats...",
+    )
+    trend_acronym_by_metric = st.session_state.get("trend_acronyms", {})
+
     if not selected_ids:
-        st.info("Select one or more players to visualize.")
+        st.info("Select one or more players, then press Visualize.")
     elif not trend_selected_metrics:
-        st.info("Select one or more metrics to visualize.")
+        st.info("Select one or more metrics, then press Visualize.")
+    elif not trend_display_metrics:
+        st.info("Press Visualize to plot the checked metrics.")
     else:
-        with st.spinner("Pulling season stats..."):
-            trend_series_by_metric = {
-                key: client.get_aggregate_series(selected_tuple, key, selected_group, perf_start, perf_end)
-                for key, _ in trend_selected_metrics
-            }
-        trend_acronym_by_metric = dict(trend_selected_metrics)
-        trend_populated = {key: s for key, s in trend_series_by_metric.items() if s["years"]}
+        trend_populated = {key: s for key, s in trend_display_metrics.items() if s["years"]}
 
         if not trend_populated:
             st.info(f"No {perf_start}-{perf_end} season stats for the selected players.")
         else:
             trend_title = f"{team['name']} — {perf_start} to {perf_end}"
-            # Re-animate the snake reveal whenever the subject or the set of
-            # displayed metrics changes -- not on every rerun (e.g. dragging
-            # a scrubber shouldn't replay the animation for an unchanged set).
-            trend_display_key = (team["id"], frozenset(selected_ids), frozenset(trend_populated))
-            trend_should_animate = st.session_state.get("perf_last_shown_key") != trend_display_key
-            st.session_state["perf_last_shown_key"] = trend_display_key
-
             trend_slot = st.empty()
-            if trend_should_animate:
+            if trend_pressed:
                 trend_frames = max(len(s["years"]) for s in trend_populated.values())
                 for reveal in range(1, trend_frames):
                     trend_slot.plotly_chart(
@@ -191,52 +227,42 @@ forecast_end = pushed_year_control(
 # selection + group), so switching players/teams doesn't show a stale
 # forecast for the wrong subject until Forecast is pressed again.
 forecast_subject_key = (team["id"], frozenset(selected_ids), selected_group)
-if st.session_state.get("forecast_subject") != forecast_subject_key:
-    st.session_state["forecast_subject"] = forecast_subject_key
-    st.session_state["forecast_computed"] = {}
-    st.session_state["forecast_acronyms"] = {}
+reset_on_subject_change("forecast_subject", forecast_subject_key, {"forecast_computed": {}, "forecast_acronyms": {}})
+
+forecast_computed_keys = set(st.session_state.get("forecast_computed", {}))
 
 forecast_metric_panel_col, forecast_graph_col = st.columns([1, 3])
 with forecast_metric_panel_col:
     st.caption("Metrics")
     with st.container(height=240, border=True):
-        forecast_selected_metrics = [
-            (key, acronym)
-            for key, acronym in metrics_for_group(selected_group)
-            if st.checkbox(full_name_for_metric(key), key=f"forecast_metric_{key}")
-        ]
+        forecast_selected_metrics = []
+        for key, acronym in metrics_for_group(selected_group):
+            label = full_name_for_metric(key)
+            if key in forecast_computed_keys:
+                label = f":green[●] {label}"
+            if st.checkbox(label, key=f"forecast_metric_{key}"):
+                forecast_selected_metrics.append((key, acronym))
     forecast_pressed = st.button("Forecast", type="primary")
 
 with forecast_graph_col:
-    current_forecast_keys = {key for key, _ in forecast_selected_metrics}
-    computed = st.session_state.get("forecast_computed", {})
-
-    if forecast_pressed and selected_ids and forecast_end > perf_end and forecast_selected_metrics:
-        # Forecasting fits a real model per metric -- this is the only path
-        # that ever does that work; every other branch below just filters
-        # or clears the last computed result.
-        with st.spinner("Fitting forecast..."):
-            computed = {
-                key: client.get_aggregate_forecast(
-                    selected_tuple, key, selected_group, perf_start, perf_end, forecast_end
-                )
-                for key, _ in forecast_selected_metrics
-            }
-        st.session_state["forecast_computed"] = computed
-        st.session_state["forecast_acronyms"] = dict(forecast_selected_metrics)
+    # Forecasting fits a real model per metric -- this is the only path that
+    # ever does that work; every other case inside the shared state machine
+    # just filters or clears the last computed result.
+    forecast_effective_press = (
+        forecast_pressed and bool(selected_ids) and forecast_end > perf_end and bool(forecast_selected_metrics)
+    )
+    forecast_display_metrics = metric_button_state_machine(
+        forecast_effective_press,
+        forecast_selected_metrics,
+        "forecast_computed",
+        "forecast_acronyms",
+        lambda key: client.get_aggregate_forecast(
+            selected_tuple, key, selected_group, perf_start, perf_end, forecast_end
+        ),
+        spinner_message="Fitting forecast...",
+    )
+    if forecast_effective_press:
         st.session_state["forecast_animate"] = True
-    elif current_forecast_keys - computed.keys():
-        # A checked metric was never part of the last computed forecast
-        # (newly checked, or Forecast was pressed while in an invalid
-        # state and nothing new was computed) -- clear until Forecast is
-        # pressed again, rather than silently forecasting on a partial or
-        # stale set.
-        computed = {}
-        st.session_state["forecast_computed"] = {}
-
-    # Unchecked metrics are simply filtered out here -- no recompute, no
-    # clearing, they just drop off the graph immediately.
-    forecast_display_metrics = {key: computed[key] for key in current_forecast_keys if key in computed}
     forecast_acronym_by_metric = st.session_state.get("forecast_acronyms", {})
 
     if not selected_ids:
