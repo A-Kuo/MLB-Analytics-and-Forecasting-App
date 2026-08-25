@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from macroservice import news, players, statcast_season, teams, trajectories
+from macroservice import news, players, roster_history, statcast_season, teams, trajectories
 from utils.filters import STATCAST_METRIC_KEYS
 
 
@@ -23,6 +23,16 @@ def get_teams() -> list[dict]:
 @st.cache_data(ttl=3600)
 def get_roster(team_id: int, season: int) -> list[dict]:
     return teams.get_roster(team_id, season)
+
+
+@st.cache_data(ttl=3600)
+def get_team_roster_with_active_years(team_id: int) -> list[dict]:
+    return roster_history.get_team_roster_with_active_years(team_id)
+
+
+@st.cache_data(ttl=3600)
+def resolve_players_in_range(team_id: int, start_year: int, end_year: int, group: str | None = None) -> set[int]:
+    return roster_history.resolve_players_in_range(team_id, start_year, end_year, group)
 
 
 @st.cache_data(ttl=60)
