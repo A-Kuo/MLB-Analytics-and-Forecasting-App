@@ -9,13 +9,14 @@ key_prefix-namespaced session state (see the k() helper) so neither panel's
 widgets collide with the other's.
 
 Within a panel: vertical Team -> Timeline -> Player selection. Timeline (a
-year-range control) is what the position-group bulk-selection checkboxes
-resolve against (via macroservice.roster_history, an all-time-roster +
-date-overlap lookup) -- moving it automatically re-filters which players
-are selectable, without a separate Season control (retired: it was
-redundant with Timeline). Selected players render as removable flags, each
-"[position] Name (years active)" (see utils/selection_widgets.py), and as
-a matching, uncolored portrait wall below.
+year-range control) is what the position checkboxes resolve against (via
+macroservice.roster_history, an all-time-roster + date-overlap lookup) --
+moving it automatically re-filters which players are selectable, without a
+separate Season control (retired: it was redundant with Timeline).
+Selection happens entirely through the multiselect (its native
+selected-item pills, each "[position] Name (years active)", are the only
+per-player indicator -- there's no separate flag list) and a matching,
+uncolored portrait wall below (see utils/selection_widgets.py).
 
 Calls the macroservice/ package in-process (see client.py) -- no separate
 server needs to be running.
@@ -27,6 +28,9 @@ whether that's one player, a manual handful, or an entire bulk-selected
 group. Since hitting and pitching metrics can't be meaningfully combined,
 those three sections show one stat group at a time -- whichever type has
 more players in the current selection (utils.player_selection.group_for_selection).
+Each of the three also carries its own collapsible Game Log at the bottom
+(single-player only) rather than there being one standalone Game Log
+section.
 
 Team Trends (the old per-game rolling trajectory section) is commented out
 below rather than deleted -- it was built for a single team and needs a
@@ -78,6 +82,40 @@ def k(prefix: str, name: str) -> str:
     the two side-by-side panels (see render_dashboard_panel) never collide.
     """
     return f"{prefix}_{name}"
+
+
+def _render_game_log_expander(
+    key_prefix: str, section_name: str, selected_ids: set, bio_by_id: dict, perf_end: int
+) -> None:
+    """A collapsible single-player game log, embedded at the bottom of
+    Aggregate KPI, Performance Trend, and Forecast (rather than living as
+    its own standalone section) -- each call gets its own key, scoped by
+    both the panel prefix and ``section_name``, so the three expanders
+    don't collide with each other or across panels.
+    """
+    with st.expander("Game Log", key=k(key_prefix, f"{section_name}_game_log_expander")):
+        if len(selected_ids) != 1:
+            st.info("Select exactly one player to see their game log.")
+            return
+        game_log_player_id = next(iter(selected_ids))
+        game_log_group = "pitching" if bio_by_id.get(game_log_player_id, {}).get("is_pitcher") else "hitting"
+        # No Season control anymore (retired as redundant with Timeline) --
+        # the game log is inherently one season's worth of data, so it
+        # uses the Timeline's end year as the nearest "current" reference.
+        splits = client.get_game_log_splits(game_log_player_id, perf_end, game_log_group)
+        if not splits:
+            st.write("No games logged yet this season.")
+            return
+        rows = []
+        for split in splits:
+            row = {"date": split.get("date"), "opponent": split.get("opponent", {}).get("name", "")}
+            row.update(split.get("stat", {}))
+            rows.append(row)
+        game_log_df = pd.DataFrame(rows)
+        display_columns = [col for col in GAME_LOG_COLUMNS[game_log_group] if col in game_log_df.columns]
+        st.dataframe(
+            game_log_df[display_columns], hide_index=True, key=k(key_prefix, f"{section_name}_game_log_table")
+        )
 
 
 @dataclass
@@ -209,6 +247,8 @@ def render_dashboard_panel(
         for col, (key, acronym) in zip(kpi_cols, kpi_defs):
             col.metric(f"{full_name_for_metric(key)} ({acronym})", format_stat(kpi_values.get(key), key))
 
+    _render_game_log_expander(key_prefix, "kpi", selected_ids, bio_by_id, perf_end)
+
     st.subheader("Performance Trend")
     # Subject key deliberately mirrors Forecast's below (team + selected players
     # + group only, not the timeline range) -- the two panels share the same
@@ -277,6 +317,8 @@ def render_dashboard_panel(
                     build_multi_metric_figure(trend_populated, trend_acronym_by_metric, None, trend_title),
                     key=k(key_prefix, "trend_chart_final"),
                 )
+
+    _render_game_log_expander(key_prefix, "trend", selected_ids, bio_by_id, perf_end)
 
     st.subheader("Forecast")
     st.caption(
@@ -382,27 +424,7 @@ def render_dashboard_panel(
                     key=k(key_prefix, "forecast_chart_final"),
                 )
 
-    with st.expander("Game Log", key=k(key_prefix, "game_log_expander")):
-        if len(selected_ids) != 1:
-            st.info("Select exactly one player to see their game log.")
-        else:
-            game_log_player_id = next(iter(selected_ids))
-            game_log_group = "pitching" if bio_by_id.get(game_log_player_id, {}).get("is_pitcher") else "hitting"
-            # No Season control anymore (retired as redundant with Timeline) --
-            # the game log is inherently one season's worth of data, so it
-            # uses the Timeline's end year as the nearest "current" reference.
-            splits = client.get_game_log_splits(game_log_player_id, perf_end, game_log_group)
-            if splits:
-                rows = []
-                for split in splits:
-                    row = {"date": split.get("date"), "opponent": split.get("opponent", {}).get("name", "")}
-                    row.update(split.get("stat", {}))
-                    rows.append(row)
-                game_log_df = pd.DataFrame(rows)
-                display_columns = [col for col in GAME_LOG_COLUMNS[game_log_group] if col in game_log_df.columns]
-                st.dataframe(game_log_df[display_columns], hide_index=True, key=k(key_prefix, "game_log_table"))
-            else:
-                st.write("No games logged yet this season.")
+    _render_game_log_expander(key_prefix, "forecast", selected_ids, bio_by_id, perf_end)
 
     # Team Trends (the old per-game rolling offense/defense trajectory) is
     # deliberately commented out, not deleted or ported to this panel model

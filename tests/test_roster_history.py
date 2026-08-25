@@ -95,15 +95,27 @@ def test_people_batch_still_active_has_no_last_active_year(mock_request):
 
 
 def test_active_year_ranges_still_active():
-    assert roster_history._active_year_ranges({"debut_year": 2022, "last_active_year": None}) == [(2022, None)]
+    bio = {"debut_year": 2022, "last_active_year": None, "active": True}
+    assert roster_history._active_year_ranges(bio) == [(2022, None)]
 
 
 def test_active_year_ranges_retired():
-    assert roster_history._active_year_ranges({"debut_year": 1998, "last_active_year": 2004}) == [(1998, 2004)]
+    bio = {"debut_year": 1998, "last_active_year": 2004, "active": False}
+    assert roster_history._active_year_ranges(bio) == [(1998, 2004)]
 
 
 def test_active_year_ranges_missing_debut():
-    assert roster_history._active_year_ranges({"debut_year": None, "last_active_year": None}) == []
+    bio = {"debut_year": None, "last_active_year": None, "active": False}
+    assert roster_history._active_year_ranges(bio) == []
+
+
+def test_active_year_ranges_retired_with_unknown_last_active_year_falls_back_to_debut_season():
+    # A real data gap (many 19th/early-20th-century players have no
+    # recorded lastPlayedDate at all) must not be conflated with "still
+    # active" just because last_active_year is None -- Bob Allen (debuted
+    # 1890) shouldn't show up as active through the present day.
+    bio = {"debut_year": 1890, "last_active_year": None, "active": False}
+    assert roster_history._active_year_ranges(bio) == [(1890, 1890)]
 
 
 def test_active_years_label_still_active():
@@ -164,16 +176,21 @@ def test_roster_with_active_years_handles_missing_bio(mock_alltime, mock_batch):
 # ---------------------------------------------------------------------------
 
 
-def _entry(id_, positions, debut_year, last_active_year):
+def _entry(id_, positions, debut_year, last_active_year, active=None):
+    # Default active=True whenever last_active_year is None, matching the
+    # "still playing" tests below -- pass active=False explicitly for the
+    # "retired, but the API never recorded a last-played date" case (see
+    # the Bob Allen tests), which is otherwise indistinguishable by shape.
+    if active is None:
+        active = last_active_year is None
+    bio = {"debut_year": debut_year, "last_active_year": last_active_year, "active": active}
     return {
         "id": id_,
         "name": f"Player {id_}",
         "positions": positions,
         "is_pitcher": "P" in positions,
-        "debut_year": debut_year,
-        "last_active_year": last_active_year,
-        "active": last_active_year is None,
-        "active_year_ranges": [(debut_year, last_active_year)] if debut_year is not None else [],
+        **bio,
+        "active_year_ranges": roster_history._active_year_ranges(bio),
         "active_years_label": "",
     }
 
@@ -247,3 +264,19 @@ def test_resolve_no_position_filter_returns_everyone_in_range(mock_roster):
 def test_resolve_same_year_range_matches_players_active_that_year(mock_roster):
     mock_roster.return_value = [_entry(1, ["OF"], 2000, 2010)]
     assert roster_history.resolve_players_in_range(1001, 2005, 2005) == {1}
+
+
+@patch("macroservice.roster_history.get_team_roster_with_active_years")
+def test_resolve_excludes_retired_player_with_unknown_last_active_year_from_present_day_range(mock_roster):
+    # Bob Allen: debuted 1890, no recorded lastPlayedDate (a real data gap,
+    # not evidence he's still playing) -- must not match a modern-day range.
+    mock_roster.return_value = [_entry(1, ["1B"], 1890, None, active=False)]
+    assert roster_history.resolve_players_in_range(1001, 2020, 2026) == set()
+
+
+@patch("macroservice.roster_history.get_team_roster_with_active_years")
+def test_resolve_includes_retired_player_with_unknown_last_active_year_within_debut_season(mock_roster):
+    # Same data gap, but the query range does cover their debut year -- the
+    # single-season fallback still lets them match within it.
+    mock_roster.return_value = [_entry(1, ["1B"], 1890, None, active=False)]
+    assert roster_history.resolve_players_in_range(1001, 1885, 1895) == {1}

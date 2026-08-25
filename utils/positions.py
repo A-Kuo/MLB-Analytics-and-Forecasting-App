@@ -1,10 +1,9 @@
-"""Position taxonomy shared by player selection, portrait cards, and flags.
+"""Position taxonomy shared by player selection and portrait cards.
 
-Group membership mirrors the four checkbox categories in the player
-selector: checking a group checkbox selects every position within it;
-unchecking any one position checkbox un-checks its parent group (see
-utils/selection_widgets.py). Checkbox labels use the full position name;
-flags and portrait cards use the acronym.
+Group membership mirrors the four row categories in the player selector
+(see utils/selection_widgets.py) -- each group is a plain row label, with
+one checkbox per position underneath it. Those checkboxes use the full
+position name; the multiselect and portrait cards use the acronym.
 """
 from __future__ import annotations
 
@@ -37,28 +36,6 @@ GROUP_FOR_POSITION: dict[str, str] = {
 }
 
 ALL_POSITIONS: frozenset[str] = frozenset(GROUP_FOR_POSITION)
-
-# One color per group, used to tint selected-player flags -- the portrait
-# wall deliberately drops color coding (see utils/player_cards.py) since
-# Austin asked for the wall to stay plain, but flags keep it as a quick
-# at-a-glance position cue.
-GROUP_COLORS: dict[str, str] = {
-    "Battery": "#C77B00",
-    "Infield": "#1F7A3D",
-    "Outfield": "#1F4E9C",
-    "Non-Fielders": "#6B3FA0",
-}
-DEFAULT_COLOR = "#555555"
-
-
-def color_for_positions(positions: list[str]) -> str:
-    """Color for a (possibly multi-position) player -- keyed off the first
-    listed position, which is treated as primary throughout.
-    """
-    if not positions:
-        return DEFAULT_COLOR
-    group = GROUP_FOR_POSITION.get(positions[0])
-    return GROUP_COLORS.get(group, DEFAULT_COLOR)
 
 
 def format_position_tag(positions: list[str]) -> str:

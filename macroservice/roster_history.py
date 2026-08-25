@@ -89,9 +89,21 @@ def _get_people_batch(person_ids: tuple[int, ...]) -> dict[int, dict]:
 
 
 def _active_year_ranges(bio: dict) -> list[tuple[int, int | None]]:
+    """A missing `last_active_year` means "still active" ONLY when the
+    API's own `active` flag confirms it -- a retired player from before
+    the API consistently tracked lastPlayedDate (a real data gap, common
+    for 19th/early-20th-century players) also has `last_active_year: None`
+    but `active: False`, and must not be treated as playing today. Such a
+    player falls back to a single-season span at their debut year rather
+    than being projected forward indefinitely.
+    """
     if bio["debut_year"] is None:
         return []
-    return [(bio["debut_year"], bio["last_active_year"])]
+    if bio["last_active_year"] is not None:
+        return [(bio["debut_year"], bio["last_active_year"])]
+    if bio["active"]:
+        return [(bio["debut_year"], None)]
+    return [(bio["debut_year"], bio["debut_year"])]
 
 
 def _active_years_label(ranges: list[tuple[int, int | None]]) -> str:
@@ -127,24 +139,24 @@ def get_team_roster_with_active_years(team_id: int) -> list[dict]:
 def resolve_players_in_range(
     team_id: int, start_year: int, end_year: int, positions: frozenset[str] | None = None
 ) -> set[int]:
-    """Player ids whose [debut_year, last_active_year-or-now] overlaps
-    [start_year, end_year] -- the resolver behind the position-group
-    bulk-selection checkboxes, evaluated against the dashboard's timeline
-    range rather than a single season.
+    """Player ids with at least one active-year span overlapping
+    [start_year, end_year] -- the resolver behind the position checkboxes,
+    evaluated against the dashboard's timeline range rather than a single
+    season.
 
     ``positions``, when given, keeps only players holding at least one of
     those position acronyms (e.g. {"1B", "2B", "3B", "SS"} for "Infield");
-    None returns everyone. A player with no known debut_year (data gap) is
-    excluded rather than guessed at.
+    None returns everyone. A player with no known debut_year (data gap)
+    has no spans (see _active_year_ranges) and is never matched.
     """
     roster = get_team_roster_with_active_years(team_id)
     matched: set[int] = set()
     for entry in roster:
-        if entry["debut_year"] is None:
-            continue
         if positions is not None and not (set(entry["positions"]) & positions):
             continue
-        last_year = entry["last_active_year"] if entry["last_active_year"] is not None else end_year
-        if entry["debut_year"] <= end_year and last_year >= start_year:
-            matched.add(entry["id"])
+        for span_start, span_end in entry["active_year_ranges"]:
+            resolved_end = end_year if span_end is None else span_end
+            if span_start <= end_year and resolved_end >= start_year:
+                matched.add(entry["id"])
+                break
     return matched

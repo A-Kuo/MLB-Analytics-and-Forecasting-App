@@ -1,4 +1,4 @@
-from utils.player_selection import flag_badge_html, group_for_selection, player_flag_html, player_flag_label
+from utils.player_selection import group_for_selection, player_flag_label
 
 
 def test_player_flag_label_single_position():
@@ -24,18 +24,6 @@ def test_player_flag_label_no_years_omits_parens():
 def test_player_flag_label_no_positions_shows_placeholder_tag():
     bio = {"name": "Mystery Player", "positions": [], "active_year_ranges": [(2020, None)]}
     assert player_flag_label(bio) == "[?] Mystery Player (2020–present)"
-
-
-def test_flag_badge_html_escapes_label():
-    badge = flag_badge_html("<script>alert(1)</script>")
-    assert "<script>" not in badge
-    assert "&lt;script&gt;" in badge
-
-
-def test_player_flag_html_includes_formatted_label():
-    bio = {"name": "Corbin Carroll", "positions": ["CF"], "active_year_ranges": [(2022, None)]}
-    html_out = player_flag_html(bio)
-    assert "[CF] Corbin Carroll (2022–present)" in html_out
 
 
 def _bio(pid, is_pitcher):
