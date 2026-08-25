@@ -10,20 +10,28 @@ server needs to be running.
 """
 from __future__ import annotations
 
+import time
+
 import pandas as pd
 import streamlit as st
 
 import client
-from chart import build_trajectory_figure
-from utils.filters import GAME_LOG_COLUMNS, metrics_for_group, stat_group_for_position
+from chart import build_multi_metric_figure, build_trajectory_figure
+from macroservice.players import headshot_url
+from utils.filters import (
+    GAME_LOG_COLUMNS,
+    full_name_for_metric,
+    metrics_for_group,
+    stat_group_for_position,
+)
 from utils.formatters import format_stat
-from utils.timeline import pushed_year_control, year_range_control
+from utils.timeline import year_range_control
 
 st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide")
 
 EARLIEST_SEASON = 2015
-FORECAST_MAX_YEAR = 2025
 DEFENSE_COLOR = "#C41E3A"
+REVEAL_FRAME_SECONDS = 0.06
 
 teams = client.get_teams()
 team_by_name = {team["name"]: team for team in teams}
@@ -63,29 +71,9 @@ with team_header_col:
     label_col.markdown(f"### {team['name']}")
 with player_header_col:
     portrait_col, label_col = st.columns([1, 4])
-    portrait_col.image(client.get_headshot_url(player["id"]), width=72)
+    portrait_col.image(headshot_url(player["id"]), width=72)
     label_col.markdown(f"### {player_name}")
     label_col.caption(player["position"])
-
-with st.expander("Timeline preview (Phase 3 -- not yet wired to a graph)", expanded=True):
-    st.caption(
-        "Native two-handle slider + synced number inputs. Same-year overlap "
-        "is allowed; the number boxes are the reliable disambiguator when "
-        "both handles land on one year."
-    )
-    perf_start, perf_end = year_range_control("perf", EARLIEST_SEASON, current_season, label="Performance year range")
-
-    st.caption(
-        "Scrubbers 1 and 2 below mirror the range above (read-only, greyed "
-        "out); scrubber 3 sets the forecast horizon and gets pushed forward "
-        "if scrubber 2 moves past it, but never pushes back."
-    )
-    mirror_start_col, mirror_end_col = st.columns(2)
-    mirror_start_col.number_input("Scrubber 1 (train start)", value=perf_start, disabled=True)
-    mirror_end_col.number_input("Scrubber 2 (train end)", value=perf_end, disabled=True)
-    forecast_end = pushed_year_control(
-        "forecast", perf_end, FORECAST_MAX_YEAR, slider_floor_year=EARLIEST_SEASON, label="Scrubber 3 (forecast horizon)"
-    )
 
 st.subheader("Season KPIs")
 season_stats = client.get_season_stats(player["id"], season, group)
@@ -95,27 +83,54 @@ for col, (key, label) in zip(cols, kpi_defs):
     col.metric(label, format_stat(season_stats.get(key), key))
 
 st.subheader("Performance Trend")
-if group == "pitching":
-    trend_payload = client.get_pitcher_trajectory(player["id"], season)
-    if trend_payload["x_labels"] and not trend_payload["used_statcast"]:
-        st.caption(
-            "Statcast pitch-level data unavailable for this pitcher/season -- "
-            "showing appearance-level ERA instead."
-        )
-else:
-    hitting_metrics = metrics_for_group("hitting")
-    metric_label_by_key = dict(hitting_metrics)
-    metric_key = st.selectbox(
-        "Metric",
-        options=[key for key, _ in hitting_metrics],
-        format_func=lambda key: metric_label_by_key[key],
-    )
-    trend_payload = client.get_hitter_trajectory(player["id"], season, metric_key)
+perf_start, perf_end = year_range_control("perf", EARLIEST_SEASON, current_season, label="Season range")
 
-if trend_payload["x_labels"]:
-    st.plotly_chart(build_trajectory_figure(trend_payload, team["primary_color"]), use_container_width=True)
-else:
-    st.info(f"No {season} game log yet for {player_name}.")
+metric_panel_col, trend_graph_col = st.columns([1, 3])
+with metric_panel_col:
+    st.caption("Metrics")
+    with st.container(height=240, border=True):
+        selected_metrics = [
+            (key, acronym)
+            for key, acronym in metrics_for_group(group)
+            if st.checkbox(full_name_for_metric(key), key=f"perf_metric_{key}")
+        ]
+    if st.button("Visualize", type="primary"):
+        st.session_state["perf_visualized"] = True
+        st.session_state["perf_animate"] = True
+
+with trend_graph_col:
+    if not st.session_state.get("perf_visualized"):
+        st.info("Select one or more metrics, then press Visualize.")
+    elif perf_start == perf_end:
+        # Both scrubbers on the same year -- a single point isn't a trend.
+        st.info("Widen the season range: the two scrubbers are on the same year.")
+    elif not selected_metrics:
+        st.info("No metrics selected.")
+    else:
+        with st.spinner("Pulling season stats..."):
+            series_by_metric = {
+                key: client.get_season_series(player["id"], key, group, perf_start, perf_end)
+                for key, _ in selected_metrics
+            }
+        acronym_by_metric = dict(selected_metrics)
+        populated = {key: s for key, s in series_by_metric.items() if s["years"]}
+
+        if not populated:
+            st.info(f"No {perf_start}-{perf_end} season stats for {player_name}.")
+        else:
+            chart_title = f"{player_name} — {perf_start} to {perf_end}"
+            slot = st.empty()
+            if st.session_state.get("perf_animate"):
+                # Re-render with a growing slice so the lines snake out
+                # left to right, then settle on the full series.
+                frames = max(len(s["years"]) for s in populated.values())
+                for reveal in range(1, frames):
+                    slot.plotly_chart(
+                        build_multi_metric_figure(populated, acronym_by_metric, reveal, chart_title)
+                    )
+                    time.sleep(REVEAL_FRAME_SECONDS)
+                st.session_state["perf_animate"] = False
+            slot.plotly_chart(build_multi_metric_figure(populated, acronym_by_metric, None, chart_title))
 
 with st.expander("Game Log"):
     splits = client.get_game_log_splits(player["id"], season, group)
@@ -127,7 +142,7 @@ with st.expander("Game Log"):
             rows.append(row)
         game_log_df = pd.DataFrame(rows)
         display_columns = [col for col in GAME_LOG_COLUMNS[group] if col in game_log_df.columns]
-        st.dataframe(game_log_df[display_columns], use_container_width=True, hide_index=True)
+        st.dataframe(game_log_df[display_columns], hide_index=True)
     else:
         st.write("No games logged yet this season.")
 
@@ -137,12 +152,12 @@ offense_payload = client.get_team_trajectory(team["id"], season, "offense")
 defense_payload = client.get_team_trajectory(team["id"], season, "defense")
 with offense_col:
     if offense_payload["x_labels"]:
-        st.plotly_chart(build_trajectory_figure(offense_payload, team["primary_color"]), use_container_width=True)
+        st.plotly_chart(build_trajectory_figure(offense_payload, team["primary_color"]))
     else:
         st.info("No completed games yet this season.")
 with defense_col:
     if defense_payload["x_labels"]:
-        st.plotly_chart(build_trajectory_figure(defense_payload, DEFENSE_COLOR), use_container_width=True)
+        st.plotly_chart(build_trajectory_figure(defense_payload, DEFENSE_COLOR))
     else:
         st.info("No completed games yet this season.")
 
