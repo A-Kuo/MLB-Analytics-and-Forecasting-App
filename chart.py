@@ -1,15 +1,84 @@
-"""Pure Plotly rendering of a pre-fit trajectory payload from the data service.
+"""Pure Plotly rendering of already-computed series and trajectory payloads.
 
-No model fitting happens here -- the ensemble was already fit server-side.
-This only draws it: actual values (train vs. holdout markers), the blended
-trend line, a shaded 95% CI band, and a vertical train/holdout cutoff line.
+No model fitting happens here -- trajectories arrive pre-fit, and the
+multi-metric season chart plots raw yearly actuals. This module only draws.
 """
 from __future__ import annotations
 
 import plotly.graph_objects as go
 
+from utils.filters import is_rate_metric
+
 TREND_COLOR = "#FF6B35"
 CI_FILL_COLOR = "rgba(255, 107, 53, 0.15)"
+
+# Assigned in checkbox order so a given metric keeps its color as others are
+# toggled on and off.
+METRIC_PALETTE = [
+    "#1F77B4", "#D62728", "#2CA02C", "#FF7F0E",
+    "#9467BD", "#8C564B", "#17BECF", "#E377C2",
+]
+
+
+def color_for_metric_index(index: int) -> str:
+    return METRIC_PALETTE[index % len(METRIC_PALETTE)]
+
+
+def build_multi_metric_figure(
+    series_by_metric: dict[str, dict],
+    acronym_by_metric: dict[str, str],
+    reveal_upto: int | None = None,
+    title: str = "Season Trend",
+) -> go.Figure:
+    """One line per selected metric across seasons, legend labelled by acronym.
+
+    ``reveal_upto`` truncates every series to its first N points, which is
+    how the left-to-right "snake" reveal is animated: the caller re-renders
+    this figure with a growing N. ``None`` draws the complete series.
+
+    Rate stats (AVG/OPS/ERA/...) and counting stats (HR/RBI/K/...) are split
+    across two y-axes -- on a shared axis the rate lines would collapse onto
+    the baseline next to counts in the hundreds.
+    """
+    fig = go.Figure()
+    has_rate = any(is_rate_metric(key) for key in series_by_metric)
+    has_count = any(not is_rate_metric(key) for key in series_by_metric)
+
+    for index, (metric_key, series) in enumerate(series_by_metric.items()):
+        years = series["years"]
+        values = series["values"]
+        if reveal_upto is not None:
+            years = years[:reveal_upto]
+            values = values[:reveal_upto]
+
+        acronym = acronym_by_metric.get(metric_key, metric_key)
+        color = color_for_metric_index(index)
+        on_rate_axis = is_rate_metric(metric_key)
+        fig.add_trace(
+            go.Scatter(
+                x=years,
+                y=values,
+                mode="lines+markers",
+                name=acronym,
+                line={"color": color, "width": 2},
+                marker={"color": color, "size": 7},
+                yaxis="y" if on_rate_axis or not has_rate else "y2",
+                hovertemplate=f"%{{x}}<br>{acronym}: %{{y}}<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Season",
+        xaxis={"dtick": 1},
+        yaxis_title="Rate" if has_rate else "Total",
+        template="plotly_white",
+        hovermode="x unified",
+        margin={"t": 56, "b": 40, "l": 48, "r": 48},
+    )
+    if has_rate and has_count:
+        fig.update_layout(yaxis2={"title": "Total", "overlaying": "y", "side": "right"})
+    return fig
 
 
 def build_trajectory_figure(payload: dict, series_color: str) -> go.Figure:

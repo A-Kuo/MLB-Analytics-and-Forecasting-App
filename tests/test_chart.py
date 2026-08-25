@@ -1,4 +1,74 @@
-from chart import build_trajectory_figure
+from chart import build_multi_metric_figure, build_trajectory_figure
+
+
+def _series(start=2018, n=5, base=0.700, step=0.01):
+    return {
+        "years": [start + i for i in range(n)],
+        "values": [base + step * i for i in range(n)],
+    }
+
+
+def test_multi_metric_one_trace_per_selected_metric():
+    fig = build_multi_metric_figure(
+        {"ops": _series(), "avg": _series(base=0.250)}, {"ops": "OPS", "avg": "AVG"}
+    )
+    assert [t.name for t in fig.data] == ["OPS", "AVG"]
+
+
+def test_multi_metric_legend_uses_acronyms_not_full_names():
+    fig = build_multi_metric_figure({"homeRuns": _series(base=20, step=2)}, {"homeRuns": "HR"})
+    assert fig.data[0].name == "HR"
+
+
+def test_multi_metric_reveal_truncates_every_series():
+    fig = build_multi_metric_figure(
+        {"ops": _series(n=5), "avg": _series(n=5)}, {"ops": "OPS", "avg": "AVG"}, reveal_upto=2
+    )
+    for trace in fig.data:
+        assert len(trace.x) == 2
+        assert len(trace.y) == 2
+
+
+def test_multi_metric_reveal_none_draws_full_series():
+    fig = build_multi_metric_figure({"ops": _series(n=5)}, {"ops": "OPS"}, reveal_upto=None)
+    assert len(fig.data[0].x) == 5
+
+
+def test_multi_metric_splits_rate_and_counting_stats_across_axes():
+    fig = build_multi_metric_figure(
+        {"avg": _series(base=0.250), "homeRuns": _series(base=30, step=2)},
+        {"avg": "AVG", "homeRuns": "HR"},
+    )
+    axis_by_name = {t.name: t.yaxis for t in fig.data}
+    assert axis_by_name["AVG"] == "y"
+    assert axis_by_name["HR"] == "y2"
+    assert fig.layout.yaxis2.overlaying == "y"
+
+
+def test_multi_metric_all_rate_stats_share_one_axis():
+    fig = build_multi_metric_figure(
+        {"avg": _series(base=0.250), "ops": _series()}, {"avg": "AVG", "ops": "OPS"}
+    )
+    assert {t.yaxis for t in fig.data} == {"y"}
+    # No second axis is created at all when nothing needs one.
+    assert "yaxis2" not in fig.layout
+
+
+def test_multi_metric_all_counting_stats_share_one_axis():
+    fig = build_multi_metric_figure(
+        {"homeRuns": _series(base=30, step=2), "rbi": _series(base=90, step=5)},
+        {"homeRuns": "HR", "rbi": "RBI"},
+    )
+    assert {t.yaxis for t in fig.data} == {"y"}
+
+
+def test_multi_metric_distinct_color_per_metric():
+    fig = build_multi_metric_figure(
+        {"avg": _series(), "obp": _series(), "slg": _series()},
+        {"avg": "AVG", "obp": "OBP", "slg": "SLG"},
+    )
+    colors = [t.line.color for t in fig.data]
+    assert len(set(colors)) == 3
 
 
 def _payload(n=10, split=8, hover_extra=None):
