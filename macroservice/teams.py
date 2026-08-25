@@ -22,6 +22,15 @@ class UnknownTeamError(ValueError):
 
 GENERAL_NEWS_HUB_URL = "https://www.mlb.com/news"
 
+# Map team_id -> verified news hub slug where MLB.com has one;
+# teams not in this dict fall back to GENERAL_NEWS_HUB_URL via .get()
+# in team_news_hub_url below.
+_TEAM_NEWS_SLUGS: dict[int, str] = {
+    # e.g. 147: "yankees", 111: "redsox", ...
+    # fill in verified slugs as you confirm them
+}
+
+
 # Each team's dedicated news hub on mlb.com, verified live (session's Phase
 # 0 research spike): 29 of 30 resolve from the plain lowercased nickname
 # with spaces removed; Arizona is the sole irregular one ("dbacks", not
