@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 
 import feedparser
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 NEWS_API_URL = "https://newsapi.org/v2/everything"
 RSS_FALLBACK_URL = "https://www.mlb.com/feeds/news/rss.xml"
 NEWS_TTL_SECONDS = 5 * 60
+DEFAULT_LOOKBACK_DAYS = 7
 
 
 def _rss_image_by_link(xml_bytes: bytes) -> dict[str, str]:
@@ -42,14 +44,36 @@ def _rss_image_by_link(xml_bytes: bytes) -> dict[str, str]:
     return images_by_link
 
 
+def _is_within_lookback(entry, cutoff: datetime) -> bool:
+    """True if ``entry`` (a feedparser entry) has a parseable publish date
+    at or after ``cutoff``. An entry with no parseable date is treated as
+    outside the window rather than included by default -- this is what
+    actually enforces the day-window (previously nothing did; the RSS path
+    just took the feed's natural recency, unfiltered), so a malformed date
+    should fail closed, not silently bypass the cutoff.
+    """
+    parsed = getattr(entry, "published_parsed", None)
+    if not parsed:
+        return False
+    published = datetime(*parsed[:6], tzinfo=timezone.utc)
+    return published >= cutoff
+
+
 @cached(ttl_seconds=NEWS_TTL_SECONDS)
-def get_headlines(keywords: list[str], limit: int = 10) -> list[dict]:
+def get_headlines(keywords: list[str], limit: int = 10, days: int = DEFAULT_LOOKBACK_DAYS) -> list[dict]:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     if NEWS_API_KEY:
         query = " OR ".join(f'"{k}"' for k in keywords)
         resp = request_with_backoff(
             "GET",
             NEWS_API_URL,
-            params={"q": query, "language": "en", "sortBy": "publishedAt", "apiKey": NEWS_API_KEY},
+            params={
+                "q": query,
+                "language": "en",
+                "sortBy": "publishedAt",
+                "from": cutoff.date().isoformat(),
+                "apiKey": NEWS_API_KEY,
+            },
         )
         resp.raise_for_status()
         headlines = [
@@ -65,6 +89,6 @@ def get_headlines(keywords: list[str], limit: int = 10) -> list[dict]:
         headlines = [
             {"title": entry.title, "url": entry.link, "image": image_by_link.get(entry.link)}
             for entry in feed.entries
-            if any(k in entry.title.lower() for k in keywords_lower)
+            if any(k in entry.title.lower() for k in keywords_lower) and _is_within_lookback(entry, cutoff)
         ]
     return headlines[:limit]

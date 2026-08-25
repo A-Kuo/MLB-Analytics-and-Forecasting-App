@@ -1,4 +1,18 @@
-from utils.news_cards import news_card_html
+from utils.news_cards import merge_and_cap_keywords, news_card_html
+
+
+def test_merge_and_cap_keywords_deduplicates_preserving_first_occurrence():
+    merged = merge_and_cap_keywords([["Diamondbacks", "Arizona"], ["Arizona", "Paul Goldschmidt"]], max_keywords=10)
+    assert merged == ["Diamondbacks", "Arizona", "Paul Goldschmidt"]
+
+
+def test_merge_and_cap_keywords_earlier_groups_win_priority_at_the_cap():
+    merged = merge_and_cap_keywords([["a", "b"], ["c", "d", "e"]], max_keywords=3)
+    assert merged == ["a", "b", "c"]
+
+
+def test_merge_and_cap_keywords_empty_groups_are_fine():
+    assert merge_and_cap_keywords([[], []], max_keywords=5) == []
 
 
 def test_card_includes_escaped_title():

@@ -24,6 +24,27 @@ def _is_safe_url(url: str | None) -> bool:
         return False
 
 
+def merge_and_cap_keywords(keyword_groups: list[list[str]], max_keywords: int) -> list[str]:
+    """Flattens ``keyword_groups`` in order, de-duplicating and capping the
+    total at ``max_keywords`` -- earlier groups win priority over later ones
+    once the cap is hit. Callers pass team keywords ahead of individual
+    player names, so a large bulk-group player selection (which can run to
+    hundreds of names, see macroservice/roster_history.py) can't blow up
+    the news query's size or wipe out the broader team-level signal.
+    """
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in keyword_groups:
+        for keyword in group:
+            if keyword in seen:
+                continue
+            seen.add(keyword)
+            merged.append(keyword)
+            if len(merged) >= max_keywords:
+                return merged
+    return merged
+
+
 def news_card_html(title: str, url: str, image: str | None) -> str:
     safe_title = html.escape(title)
     href = html.escape(url) if _is_safe_url(url) else "#"

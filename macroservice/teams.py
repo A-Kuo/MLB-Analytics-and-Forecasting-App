@@ -20,6 +20,57 @@ class UnknownTeamError(ValueError):
     """Raised when a team_id isn't one of the known MLB teams."""
 
 
+GENERAL_NEWS_HUB_URL = "https://www.mlb.com/news"
+
+# Each team's dedicated news hub on mlb.com, verified live (session's Phase
+# 0 research spike): 29 of 30 resolve from the plain lowercased nickname
+# with spaces removed; Arizona is the sole irregular one ("dbacks", not
+# "diamondbacks"). Hardcoded rather than derived from `nickname` at runtime
+# so a future team whose nickname doesn't map cleanly fails safe (falls
+# back to the general hub below) instead of silently linking to a 404.
+TEAM_NEWS_HUB_SLUGS: dict[int, str] = {
+    108: "angels",
+    109: "dbacks",
+    110: "orioles",
+    111: "redsox",
+    112: "cubs",
+    113: "reds",
+    114: "guardians",
+    115: "rockies",
+    116: "tigers",
+    117: "astros",
+    118: "royals",
+    119: "dodgers",
+    120: "nationals",
+    121: "mets",
+    133: "athletics",
+    134: "pirates",
+    135: "padres",
+    136: "mariners",
+    137: "giants",
+    138: "cardinals",
+    139: "rays",
+    140: "rangers",
+    141: "bluejays",
+    142: "twins",
+    143: "phillies",
+    144: "braves",
+    145: "whitesox",
+    146: "marlins",
+    147: "yankees",
+    158: "brewers",
+}
+
+
+def team_news_hub_url(team_id: int) -> str:
+    """The team's dedicated news hub, falling back to the general MLB.com
+    hub for any id not in TEAM_NEWS_HUB_SLUGS (defensive -- every team
+    known today has a verified slug, see above).
+    """
+    slug = TEAM_NEWS_HUB_SLUGS.get(team_id)
+    return f"https://www.mlb.com/{slug}/news" if slug else GENERAL_NEWS_HUB_URL
+
+
 def require_known_team(team_id: int) -> None:
     if team_id not in TEAM_BY_ID:
         raise UnknownTeamError(f"Unknown team_id {team_id}")

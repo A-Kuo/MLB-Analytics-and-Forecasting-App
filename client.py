@@ -148,5 +148,5 @@ def get_team_metric_forecast(team_id: int, metric: str, group: str, train_start:
 
 
 @st.cache_data(ttl=300)
-def get_news(keywords: list[str], limit: int = 10) -> list[dict]:
-    return news.get_headlines(keywords, limit)
+def get_news(keywords: list[str], limit: int = 10, days: int = news.DEFAULT_LOOKBACK_DAYS) -> list[dict]:
+    return news.get_headlines(keywords, limit, days)

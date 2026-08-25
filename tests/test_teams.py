@@ -9,6 +9,18 @@ def test_teams_has_all_thirty():
     assert len(teams.TEAMS) == 30
 
 
+def test_every_team_has_a_verified_news_hub_slug():
+    assert set(teams.TEAM_NEWS_HUB_SLUGS) == {team["id"] for team in teams.TEAMS}
+
+
+def test_team_news_hub_url_uses_the_team_specific_slug():
+    assert teams.team_news_hub_url(109) == "https://www.mlb.com/dbacks/news"
+
+
+def test_team_news_hub_url_falls_back_to_general_hub_for_unknown_team():
+    assert teams.team_news_hub_url(999999) == teams.GENERAL_NEWS_HUB_URL
+
+
 def test_team_by_id_matches_teams_list():
     assert set(teams.TEAM_BY_ID) == {team["id"] for team in teams.TEAMS}
 

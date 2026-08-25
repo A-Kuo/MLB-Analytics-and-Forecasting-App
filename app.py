@@ -47,20 +47,32 @@ import streamlit as st
 from chart import build_forecast_figure, build_multi_metric_figure  # build_trajectory_figure: see Team Trends below
 import client
 from macroservice.players import headshot_url
+from macroservice.teams import GENERAL_NEWS_HUB_URL, team_news_hub_url
 from utils.filters import GAME_LOG_COLUMNS, full_name_for_metric, metrics_for_group
 from utils.formatters import format_stat
 from utils.metric_selection import metric_button_state_machine, reset_on_subject_change
-from utils.news_cards import news_card_html
+from utils.news_cards import merge_and_cap_keywords, news_card_html
 from utils.player_selection import group_for_selection
 from utils.selection_widgets import render_player_selection, render_portrait_wall
 from utils.timeline import pushed_year_control, year_range_control
 
 st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide")
 
+# The two side-by-side comparison panels need the main area's width more
+# than the sidebar does; Streamlit has no set_page_config width knob for
+# this, so it's a scoped CSS override (still user-resizable by drag, this
+# just changes the default).
+st.markdown(
+    '<style>section[data-testid="stSidebar"] {width: 270px !important;}</style>',
+    unsafe_allow_html=True,
+)
+
 EARLIEST_SEASON = 1901  # AL founding -- MLB Stats API's season-stats coverage goes back this far
 FORECAST_MAX_YEAR = 2025
 DEFENSE_COLOR = "#C41E3A"
 REVEAL_FRAME_SECONDS = 0.06
+NEWS_LOOKBACK_DAYS = 7
+MAX_NEWS_KEYWORDS = 20
 
 
 def k(prefix: str, name: str) -> str:
@@ -440,14 +452,45 @@ with panel_a_col:
 with panel_b_col:
     panel_b = render_dashboard_panel("b", team_by_name, default_team_name=None, narrow=True)
 
+def _panel_team_keywords(panel: PanelSelection) -> list[str]:
+    return list(panel.team["keywords"]) if panel.team else []
+
+
+def _panel_player_names(panel: PanelSelection) -> list[str]:
+    return [panel.bio_by_id[pid]["name"] for pid in panel.selected_ids if pid in panel.bio_by_id]
+
+
 with st.sidebar:
     show_news = st.toggle("News Feed", value=False)
     if show_news:
         st.subheader("News")
-        # Keyed on Panel A's team only for now -- Panel A always has a team,
-        # Panel B may not. Merging both panels' keywords (team + selected
-        # player names) into one feed is Phase 7, via PanelSelection above.
-        headlines = client.get_news(panel_a.team["keywords"]) if panel_a.team else []
+        # One merged feed across both panels: team keywords take priority
+        # over individual player names, and the whole thing is capped (a
+        # bulk-group selection can run to hundreds of player names -- see
+        # macroservice/roster_history.py -- which would otherwise blow up
+        # the query and drown out the broader team-level signal).
+        news_keywords = merge_and_cap_keywords(
+            [
+                _panel_team_keywords(panel_a),
+                _panel_team_keywords(panel_b),
+                _panel_player_names(panel_a),
+                _panel_player_names(panel_b),
+            ],
+            MAX_NEWS_KEYWORDS,
+        )
+
+        hub_links = {GENERAL_NEWS_HUB_URL: "MLB.com News"}
+        for panel in (panel_a, panel_b):
+            if panel.team:
+                # setdefault: a team with no verified hub slug maps to the
+                # same GENERAL_NEWS_HUB_URL already keyed above, so it's a
+                # no-op rather than a redundant second link to that URL --
+                # this is what "fallback to general" means in practice.
+                hub_links.setdefault(team_news_hub_url(panel.team["id"]), f"{panel.team['name']} News")
+        st.caption(" · ".join(f"[{label}]({url})" for url, label in hub_links.items()))
+        st.caption(f"Headlines from the last {NEWS_LOOKBACK_DAYS} days.")
+
+        headlines = client.get_news(news_keywords, days=NEWS_LOOKBACK_DAYS) if news_keywords else []
         if headlines:
             with st.container(height=500):
                 for headline in headlines:
