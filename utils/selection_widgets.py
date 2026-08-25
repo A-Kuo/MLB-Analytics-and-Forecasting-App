@@ -62,7 +62,7 @@ def render_player_selection(prefix: str, bio_by_id: dict, candidate_ids_by_posit
     selected = st.session_state[ids_key]
 
     all_key = f"{prefix}_all_cb"
-    st.session_state[all_key] = bool(all_ids) and selected == all_ids
+    st.session_state[all_key] = bool(all_ids) and selected >= all_ids
     st.checkbox("All Players", key=all_key, on_change=_sync_bulk_checkbox, args=(all_key, ids_key, all_ids))
 
     for group_name, positions in POSITION_GROUPS.items():
