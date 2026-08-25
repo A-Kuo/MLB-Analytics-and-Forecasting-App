@@ -24,6 +24,10 @@ def get_roster(team_id: int, season: int) -> list[dict]:
     return teams.get_roster(team_id, season)
 
 
+def get_headshot_url(player_id: int, width: int = 213) -> str:
+    return players.headshot_url(player_id, width)
+
+
 @st.cache_data(ttl=60)
 def get_season_stats(player_id: int, season: int, group: str) -> dict:
     return players.get_season_stats(player_id, season, group)

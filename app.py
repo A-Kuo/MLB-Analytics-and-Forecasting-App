@@ -1,12 +1,12 @@
 """Baseball Analytics Dashboard -- Streamlit entry point.
 
-Single-page dashboard: team/season/player selection in the sidebar, then
-KPI cards, a regression trajectory chart (pre-fit by the data service),
-a game log table, team-level rolling offense/defense trends, and a
+Single-page dashboard: team/season/player selection in a middle row, a
+team + player header (logo/portrait), KPI cards, a regression trajectory
+chart, a game log table, team-level rolling offense/defense trends, and a
 toggleable news feed, all stacked on the one page.
 
-Requires the data service (see data_service/) running and reachable at
-DATA_SERVICE_URL (default http://localhost:8000).
+Calls the macroservice/ package in-process (see client.py) -- no separate
+server needs to be running.
 """
 from __future__ import annotations
 
@@ -23,31 +23,47 @@ st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide")
 EARLIEST_SEASON = 2015
 DEFENSE_COLOR = "#C41E3A"
 
-st.sidebar.markdown("## Selection")
-
 teams = client.get_teams()
 team_by_name = {team["name"]: team for team in teams}
-team_name = st.sidebar.selectbox("Team", sorted(team_by_name))
+
+team_col, player_col, season_col = st.columns(3)
+
+with team_col:
+    team_name = st.selectbox("Team", sorted(team_by_name), filter_mode="fuzzy")
 team = team_by_name[team_name]
-st.sidebar.image(team["logo_url"], width=72)
 
 current_season = pd.Timestamp.today().year
-season = st.sidebar.selectbox("Season", list(range(EARLIEST_SEASON, current_season + 1))[::-1])
+with season_col:
+    # Season selection here is transitional -- the year-range timeline
+    # (replacing this dropdown) lands in a later phase of the dashboard
+    # redesign; downstream KPI/trend calls still need a single season
+    # until then.
+    season = st.selectbox("Season", list(range(EARLIEST_SEASON, current_season + 1))[::-1])
 
 roster = client.get_roster(team["id"], season)
 roster_by_name = {player["name"]: player for player in roster}
-player_name = st.sidebar.selectbox("Player", sorted(roster_by_name)) if roster_by_name else None
+with player_col:
+    player_name = st.selectbox("Player", sorted(roster_by_name), filter_mode="fuzzy") if roster_by_name else None
 player = roster_by_name.get(player_name) if player_name else None
 
 show_news = st.sidebar.toggle("News Feed", value=False)
-
-st.title("Baseball Analytics Dashboard")
 
 if player is None:
     st.info("No roster available for this team/season.")
     st.stop()
 
 group = stat_group_for_position(player["position"])
+
+team_header_col, player_header_col = st.columns(2)
+with team_header_col:
+    logo_col, label_col = st.columns([1, 4])
+    logo_col.image(team["logo_url"], width=72)
+    label_col.markdown(f"### {team['name']}")
+with player_header_col:
+    portrait_col, label_col = st.columns([1, 4])
+    portrait_col.image(client.get_headshot_url(player["id"]), width=72)
+    label_col.markdown(f"### {player_name}")
+    label_col.caption(player["position"])
 
 st.subheader("Season KPIs")
 season_stats = client.get_season_stats(player["id"], season, group)

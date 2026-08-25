@@ -6,6 +6,19 @@ from macroservice.caching import cached
 
 BASE_URL = "https://statsapi.mlb.com/api/v1"
 GAME_DATA_TTL_SECONDS = 60  # near-real-time: picks up newly posted games quickly
+HEADSHOT_URL_TEMPLATE = (
+    "https://img.mlbstatic.com/mlb-photos/image/upload/"
+    "d_people:generic:headshot:67:current.png/w_{width},q_auto:best/"
+    "v1/people/{player_id}/headshot/67/current"
+)
+
+
+def headshot_url(player_id: int, width: int = 213) -> str:
+    """MLB's headshot CDN. The ``d_people:generic:...`` fallback segment means
+    an unknown/photo-less player_id resolves to a generic silhouette instead
+    of a broken image, so callers never need to handle a missing photo.
+    """
+    return HEADSHOT_URL_TEMPLATE.format(width=width, player_id=player_id)
 
 
 @cached(ttl_seconds=GAME_DATA_TTL_SECONDS)
