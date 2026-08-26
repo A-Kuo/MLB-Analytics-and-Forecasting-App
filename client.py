@@ -9,11 +9,15 @@ front of it), so both are intentional, not redundant.
 """
 from __future__ import annotations
 
+import logging
+
 import streamlit as st
 
-from macroservice import news, players, roster_history, statcast_season, teams, trajectories
+from macroservice import news, players, roster_history, roster_history_db, statcast_season, teams, trajectories
 from utils.aggregation import aggregate_scalar, aggregate_series
 from utils.filters import STATCAST_METRIC_KEYS, is_rate_metric
+
+logger = logging.getLogger(__name__)
 
 
 @st.cache_data(ttl=3600)
@@ -26,16 +30,58 @@ def get_roster(team_id: int, season: int) -> list[dict]:
     return teams.get_roster(team_id, season)
 
 
+def _roster_engine():
+    """SQLAlchemy engine for the roster-history cache. st.connection caches
+    the connection object itself across reruns (keyed by name), so this
+    needs no cache decorator of its own.
+
+    Raises when no [connections.postgresql] secret is configured -- callers
+    must treat that as "cache unavailable", not a fatal error, so the app
+    still runs before anyone wires up secrets.
+    """
+    return st.connection("postgresql", type="sql").engine
+
+
 @st.cache_data(ttl=3600)
 def get_team_roster_with_active_years(team_id: int) -> list[dict]:
-    return roster_history.get_team_roster_with_active_years(team_id)
+    """Postgres-first, with a live-API fallback that self-heals the cache.
+
+    A team missing from Postgres (backfill hasn't covered it yet) is a
+    cache miss, not an error: fetch live, then write it back so the next
+    read is fast. Every DB interaction -- including opening the connection
+    -- is guarded, because degrading to the pre-migration live-API behavior
+    beats breaking the dashboard when secrets aren't configured or Neon has
+    a blip. The tradeoff is that a sustained outage shows up only in logs.
+    """
+    try:
+        engine = _roster_engine()
+        rows = roster_history_db.fetch_team_roster_rows(engine, team_id)
+    except Exception:
+        logger.warning("Roster cache read failed for team %s; falling back to live API", team_id, exc_info=True)
+        engine = None
+        rows = []
+
+    if rows:
+        return roster_history.enrich_with_active_years(rows)
+
+    roster = roster_history.get_team_roster_with_active_years(team_id)
+    if engine is not None:
+        try:
+            roster_history_db.upsert_team_roster(engine, team_id, roster)
+        except Exception:
+            logger.warning("Roster cache write failed for team %s; serving live data", team_id, exc_info=True)
+    return roster
 
 
 @st.cache_data(ttl=3600)
 def resolve_players_in_range(
     team_id: int, start_year: int, end_year: int, positions: frozenset[str] | None = None
 ) -> set[int]:
-    return roster_history.resolve_players_in_range(team_id, start_year, end_year, positions)
+    # Deliberately goes through this module's DB-backed roster fetch above
+    # rather than roster_history.resolve_players_in_range, so all 14
+    # per-position calls in one render share a single cached roster.
+    roster = get_team_roster_with_active_years(team_id)
+    return roster_history.resolve_from_roster(roster, start_year, end_year, positions)
 
 
 @st.cache_data(ttl=60)

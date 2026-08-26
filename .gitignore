@@ -4,3 +4,5 @@ __pycache__/
 venv/
 .env
 .ipynb_checkpoints/
+# Only the secrets file -- a .streamlit/config.toml (theming) should be committed.
+.streamlit/secrets.toml

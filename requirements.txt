@@ -7,3 +7,5 @@ fastapi>=0.110
 uvicorn[standard]>=0.27
 feedparser>=6.0
 scikit-learn>=1.4
+SQLAlchemy>=2.0
+psycopg[binary]>=3.1

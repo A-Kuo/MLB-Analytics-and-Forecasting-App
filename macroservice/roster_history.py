@@ -112,6 +112,21 @@ def _active_years_label(ranges: list[tuple[int, int | None]]) -> str:
     return ", ".join(f"{start}–{'present' if end is None else end}" for start, end in ranges)
 
 
+def enrich_with_active_years(rows: list[dict]) -> list[dict]:
+    """Attaches active_year_ranges/active_years_label to bio+stint rows --
+    each row needs id/name/positions/is_pitcher/debut_year/last_active_year/
+    active. Shared by both the live-API path (get_team_roster_with_active_years
+    below) and the Postgres-backed path (macroservice/roster_history_db.py),
+    so the "corrected last-active-year" fix in _active_year_ranges lives in
+    exactly one place regardless of where the raw row data came from.
+    """
+    enriched = []
+    for row in rows:
+        ranges = _active_year_ranges(row)
+        enriched.append({**row, "active_year_ranges": ranges, "active_years_label": _active_years_label(ranges)})
+    return enriched
+
+
 def get_team_roster_with_active_years(team_id: int) -> list[dict]:
     """get_alltime_roster() entries enriched with debut_year/
     last_active_year/active/active_year_ranges/active_years_label -- backs
@@ -126,30 +141,25 @@ def get_team_roster_with_active_years(team_id: int) -> list[dict]:
     """
     roster = get_alltime_roster(team_id)
     bios = _get_people_batch(tuple(entry["id"] for entry in roster))
-    enriched = []
-    for entry in roster:
-        bio = bios.get(entry["id"], {"debut_year": None, "last_active_year": None, "active": False})
-        ranges = _active_year_ranges(bio)
-        enriched.append(
-            {**entry, **bio, "active_year_ranges": ranges, "active_years_label": _active_years_label(ranges)}
-        )
-    return enriched
+    rows = [
+        {**entry, **bios.get(entry["id"], {"debut_year": None, "last_active_year": None, "active": False})}
+        for entry in roster
+    ]
+    return enrich_with_active_years(rows)
 
 
-def resolve_players_in_range(
-    team_id: int, start_year: int, end_year: int, positions: frozenset[str] | None = None
+def resolve_from_roster(
+    roster: list[dict], start_year: int, end_year: int, positions: frozenset[str] | None = None
 ) -> set[int]:
-    """Player ids with at least one active-year span overlapping
-    [start_year, end_year] -- the resolver behind the position checkboxes,
-    evaluated against the dashboard's timeline range rather than a single
-    season.
+    """Player ids (from an already-fetched roster -- see
+    get_team_roster_with_active_years/macroservice.roster_history_db) with
+    at least one active-year span overlapping [start_year, end_year].
 
     ``positions``, when given, keeps only players holding at least one of
     those position acronyms (e.g. {"1B", "2B", "3B", "SS"} for "Infield");
     None returns everyone. A player with no known debut_year (data gap)
     has no spans (see _active_year_ranges) and is never matched.
     """
-    roster = get_team_roster_with_active_years(team_id)
     matched: set[int] = set()
     for entry in roster:
         if positions is not None and not (set(entry["positions"]) & positions):
@@ -160,3 +170,14 @@ def resolve_players_in_range(
                 matched.add(entry["id"])
                 break
     return matched
+
+
+def resolve_players_in_range(
+    team_id: int, start_year: int, end_year: int, positions: frozenset[str] | None = None
+) -> set[int]:
+    """The resolver behind the position checkboxes, evaluated against the
+    dashboard's timeline range rather than a single season -- see
+    resolve_from_roster for the matching rule.
+    """
+    roster = get_team_roster_with_active_years(team_id)
+    return resolve_from_roster(roster, start_year, end_year, positions)
