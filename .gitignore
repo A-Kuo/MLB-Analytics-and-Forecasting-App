@@ -6,3 +6,6 @@ venv/
 .ipynb_checkpoints/
 # Only the secrets file -- a .streamlit/config.toml (theming) should be committed.
 .streamlit/secrets.toml
+
+notebooks/*
+# all file regardless of extension in the notebooks directory
