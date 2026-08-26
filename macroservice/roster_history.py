@@ -48,10 +48,18 @@ def get_alltime_roster(team_id: int) -> list[dict]:
         # Normalize generic "OF" to all three specific positions so they
         # surface under any outfield position filter (LF/CF/RF).
         positions = ["LF", "CF", "RF"] if pos == "OF" else [pos]
+        person = entry["person"]
         result.append(
             {
-                "id": entry["person"]["id"],
-                "name": entry["person"]["fullName"],
+                "id": person["id"],
+                # A handful of all-time roster entries carry only an id and
+                # link, with no fullName (confirmed live: Dodgers person
+                # 116751, who /people returns nothing for either -- an
+                # orphaned record on MLB's side). Falling back to a
+                # placeholder keeps one bad row from failing a whole team's
+                # roster; such a player has no bio, so no active-year span,
+                # so resolve_from_roster never surfaces them in the UI.
+                "name": person.get("fullName") or f"Unknown Player {person['id']}",
                 "positions": positions,
                 "is_pitcher": pos == "P",
             }

@@ -15,15 +15,15 @@ cached data for an actual team, and cleans up after itself.
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 from sqlalchemy import create_engine, text
 
 from macroservice import roster_history, roster_history_db
 
+DATABASE_URL = roster_history_db.resolve_database_url()
+
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("DATABASE_URL"), reason="requires a real Postgres DATABASE_URL"
+    not DATABASE_URL, reason="requires DATABASE_URL or a local .streamlit/secrets.toml"
 )
 
 TEST_TEAM_ID = 999_001
@@ -52,7 +52,7 @@ _ROSTER = [
 
 @pytest.fixture
 def engine():
-    eng = create_engine(os.environ["DATABASE_URL"])
+    eng = create_engine(DATABASE_URL)
     roster_history_db.ensure_schema(eng)
     yield eng
     with eng.begin() as conn:

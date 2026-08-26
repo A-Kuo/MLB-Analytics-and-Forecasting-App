@@ -47,6 +47,20 @@ def test_alltime_roster_requests_rostertype_alltime(mock_request):
 
 
 @patch("macroservice.roster_history.request_with_backoff")
+def test_alltime_roster_tolerates_an_entry_with_no_full_name(mock_request):
+    # Confirmed live: Dodgers person 116751's roster entry has only id and
+    # link, and /people returns nothing for them. One orphaned record must
+    # not fail the other ~2,000 entries on that team.
+    mock_request.return_value = _roster_response(
+        [{"person": {"id": 116751}, "position": {"abbreviation": "2B"}}]
+    )
+    roster = roster_history.get_alltime_roster(9998)
+    assert roster == [
+        {"id": 116751, "name": "Unknown Player 116751", "positions": ["2B"], "is_pitcher": False},
+    ]
+
+
+@patch("macroservice.roster_history.request_with_backoff")
 def test_alltime_roster_normalizes_generic_of_to_outfield_positions(mock_request):
     mock_request.return_value = _roster_response([_roster_entry(1, "Generic Player", "OF")])
     roster = roster_history.get_alltime_roster(9999)  # Use a different team_id to bypass cache

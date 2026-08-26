@@ -50,9 +50,13 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv()
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = roster_history_db.resolve_database_url()
     if not database_url:
-        print("DATABASE_URL is not set (expected in the environment or a local .env).", file=sys.stderr)
+        print(
+            "No database connection string found -- set DATABASE_URL (environment or .env), "
+            "or configure [connections.postgresql].url in .streamlit/secrets.toml.",
+            file=sys.stderr,
+        )
         return 2
 
     team_ids = [args.team_id] if args.team_id else [team["id"] for team in teams.TEAMS]
