@@ -194,6 +194,32 @@ The `macroservice/` package can also run standalone as a REST API (not required 
 uvicorn macroservice.api:app --reload
 ```
 
+### Roster cache (Postgres)
+
+All-time roster and player-bio lookups are cached in Postgres, since the position checkboxes resolve a team's entire franchise history (up to ~2,000 players) on every render. This is optional: with no database configured the app falls back to the live MLB Stats API and works exactly as it did before, just slower.
+
+The same credential is consumed in two different shapes, which is easy to get wrong:
+
+- **Streamlit** (local `.streamlit/secrets.toml`, and Streamlit Cloud's Secrets UI) wants a TOML block. This file is gitignored; never commit it.
+
+  ```toml
+  [connections.postgresql]
+  url = "postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require"
+  ```
+
+- **The backfill script** (and the GitHub Actions `DATABASE_URL` repo secret) wants a bare connection string, not TOML.
+
+Most providers hand out a `postgresql://` URL, which SQLAlchemy maps to psycopg2 — not installed here. `normalize_database_url()` rewrites that to `postgresql+psycopg://` automatically and also accepts the TOML block, so either form works in either place.
+
+Seed the cache (idempotent; creates tables on first run):
+
+```bash
+python scripts/backfill_roster_history.py            # all 30 teams
+python scripts/backfill_roster_history.py --team-id 109
+```
+
+`.github/workflows/backfill_roster_history.yml` reruns this monthly — roster history changes only a few times a year — and can be triggered manually from the Actions tab.
+
 ### Core Dependencies
 
 ```
@@ -206,6 +232,8 @@ fastapi>=0.110
 uvicorn[standard]>=0.27
 feedparser>=6.0
 scikit-learn>=1.4
+SQLAlchemy>=2.0
+psycopg[binary]>=3.1
 ```
 
 `SVR`, `HuberRegressor`, and `GaussianProcessRegressor` all ship with `scikit-learn`, and Statcast is fetched as CSV over `requests`/`pandas`.
