@@ -16,6 +16,10 @@ notebooks/**/validate*
 notebooks/_notebook_common.py
 
 # Next.js / Node (Vercel branch frontend)
+# Next.js / Node build output -- not part of main, but these directories can
+# end up sitting in the working tree regardless of branch (e.g. after
+# switching from Vercel), so ignore them here too rather than let a git GUI
+# list thousands of individual files.
 /node_modules
 /.next/
 /out/
