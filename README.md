@@ -170,8 +170,8 @@ ci_band = 1.96 * gpr_predictive_std   # ~95% confidence band
 ## Setup
 
 ```bash
-git clone https://github.com/A-Kuo/baseball-analytics-dashboard
-cd baseball-analytics-dashboard
+git clone https://github.com/A-Kuo/MLB-Analytics-and-Forecasting-App
+cd MLB-Analytics-and-Forecasting-App
 python -m venv .venv && source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
