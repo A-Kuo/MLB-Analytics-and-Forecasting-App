@@ -93,6 +93,13 @@ for league, league_label in (("AL", "American League"), ("NL", "National League"
 
 selected_team_ids = frozenset(st.session_state[ids_key])
 
+# News Feed itself is rendered once, shared across both pages, by app.py
+# (the router) after this page's script finishes running -- see app.py's
+# comment on why. This page only hands off which teams are selected; the
+# shared renderer owns the per-team cap and hub-link derivation, since it
+# can get everything it needs from team_ids alone via macroservice.teams.
+st.session_state["news_context"] = {"team_ids": selected_team_ids}
+
 st.subheader("Season")
 current_year = datetime.datetime.now().year
 season = st.number_input(

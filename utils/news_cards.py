@@ -2,10 +2,11 @@
 
 Streamlit has no native "clickable image card" widget, so this builds a raw
 HTML snippet for st.markdown(unsafe_allow_html=True). title/url/image are
-externally-sourced (NewsAPI or MLB's RSS feed), so title is HTML-escaped and
-url/image are restricted to http(s) schemes before being interpolated --
-otherwise a malicious or compromised headline could inject a script or break
-out of the href/src attribute.
+externally-sourced (MLB.com's and SB Nation's feeds, pre-ingested into
+Postgres by scripts/ingest_team_news.py -- see macroservice/news_db.py), so
+title is HTML-escaped and url/image are restricted to http(s) schemes
+before being interpolated -- otherwise a malicious or compromised headline
+could inject a script or break out of the href/src attribute.
 """
 from __future__ import annotations
 
@@ -24,33 +25,12 @@ def _is_safe_url(url: str | None) -> bool:
         return False
 
 
-def merge_and_cap_keywords(keyword_groups: list[list[str]], max_keywords: int) -> list[str]:
-    """Flattens ``keyword_groups`` in order, de-duplicating and capping the
-    total at ``max_keywords`` -- earlier groups win priority over later ones
-    once the cap is hit. Callers pass team keywords ahead of individual
-    player names, so a large bulk-group player selection (which can run to
-    hundreds of names, see macroservice/roster_history.py) can't blow up
-    the news query's size or wipe out the broader team-level signal.
-    """
-    merged: list[str] = []
-    seen: set[str] = set()
-    for group in keyword_groups:
-        for keyword in group:
-            if keyword in seen:
-                continue
-            seen.add(keyword)
-            merged.append(keyword)
-            if len(merged) >= max_keywords:
-                return merged
-    return merged
-
-
 def news_card_html(title: str, url: str, image: str | None) -> str:
     safe_title = html.escape(title)
     href = html.escape(url) if _is_safe_url(url) else "#"
     image_html = (
         f'<img src="{html.escape(image)}" '
-        'style="width:100%;max-height:140px;object-fit:cover;border-radius:4px;margin-bottom:6px;">'
+        'style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:6px;">'
         if _is_safe_url(image)
         else ""
     )

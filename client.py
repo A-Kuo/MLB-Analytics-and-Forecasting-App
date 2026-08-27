@@ -11,14 +11,19 @@ from __future__ import annotations
 
 import datetime
 import logging
+import time
 
 import streamlit as st
 
-from macroservice import insights_db, news, players, roster_history, roster_history_db, season_stats_db, statcast_season, teams, trajectories
+from macroservice import insights_db, news_db, players, roster_history, roster_history_db, season_stats_db, statcast_season, teams, trajectories
 from utils.aggregation import aggregate_scalar, aggregate_series
 from utils.filters import STATCAST_METRIC_KEYS, is_rate_metric
 
 logger = logging.getLogger(__name__)
+
+DB_ENGINE_FAILURE_COOLDOWN_SECONDS = 300  # 5 min
+_db_engine_unavailable_until: float = 0.0
+_DB_ENGINE_COOLDOWN_ERROR = RuntimeError("Postgres connection unavailable (cached failure; cooldown active)")
 
 
 def _is_season_complete(season: int) -> bool:
@@ -53,8 +58,26 @@ def _db_engine():
     Raises when no [connections.postgresql] secret is configured -- callers
     must treat that as "cache unavailable", not a fatal error, so the app
     still runs before anyone wires up secrets.
+
+    A known failure is remembered for DB_ENGINE_FAILURE_COOLDOWN_SECONDS:
+    st.connection's own internal cache never memoizes a *raised* exception,
+    so every caller would otherwise re-attempt the full connection setup
+    (parsing secrets, constructing the connection, raising again) on every
+    single call -- for a wide-range KPI aggregate fanning out across many
+    players/years, that's 100+ redundant failed attempts plus 100+
+    full-traceback log calls in one computation when Postgres is simply
+    unconfigured. Re-attempts after the cooldown in case secrets get fixed
+    without a full process restart.
     """
-    return st.connection("postgresql", type="sql").engine
+    global _db_engine_unavailable_until
+    now = time.monotonic()
+    if now < _db_engine_unavailable_until:
+        raise _DB_ENGINE_COOLDOWN_ERROR
+    try:
+        return st.connection("postgresql", type="sql").engine
+    except Exception:
+        _db_engine_unavailable_until = now + DB_ENGINE_FAILURE_COOLDOWN_SECONDS
+        raise
 
 
 @st.cache_data(ttl=3600)
@@ -372,8 +395,14 @@ def get_team_metric_forecast(team_id: int, metric: str, group: str, train_start:
 
 
 @st.cache_data(ttl=300)
-def get_news(keywords: list[str], limit: int = 10, days: int = news.DEFAULT_LOOKBACK_DAYS) -> list[dict]:
-    return news.get_headlines(keywords, limit, days)
+def get_team_news(team_ids: tuple[int, ...], limit: int = 10, days: int = 7) -> list[dict]:
+    """The dashboard's News Feed source on both pages -- Postgres-only, no
+    live-API fallback (unlike every other function in this module): an
+    empty result means scripts/ingest_team_news.py hasn't run yet or found
+    nothing for these teams in the lookback window, not a transient
+    failure to retry live. See macroservice/news_db.py.
+    """
+    return news_db.fetch_team_news(_db_engine(), team_ids, limit, days)
 
 
 @st.cache_data(ttl=300)

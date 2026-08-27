@@ -1,0 +1,22 @@
+name: Ingest team news
+
+# News changes constantly -- every 6 hours keeps the feed reasonably fresh
+# without hammering MLB.com/SB Nation on every dashboard request (avoiding
+# that per-request load entirely is the whole point of this job).
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-backfill.txt
+      - run: python scripts/ingest_team_news.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

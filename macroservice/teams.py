@@ -80,6 +80,19 @@ def team_news_hub_url(team_id: int) -> str:
     return f"https://www.mlb.com/{slug}/news" if slug else GENERAL_NEWS_HUB_URL
 
 
+def team_news_rss_url(team_id: int) -> str | None:
+    """The team's dedicated MLB.com RSS feed (confirmed live: every team's
+    news hub has a feed at this exact URL shape, mirroring the general
+    feed's own https://www.mlb.com/feeds/news/rss.xml). Returns None for
+    any id not in TEAM_NEWS_HUB_SLUGS (defensive -- every team known today
+    has a verified slug) -- unlike team_news_hub_url, there's no general
+    fallback here, since a caller wanting an all-teams feed should use the
+    keyword-filtered macroservice.news.get_headlines path instead.
+    """
+    slug = TEAM_NEWS_HUB_SLUGS.get(team_id)
+    return f"https://www.mlb.com/{slug}/feeds/news/rss.xml" if slug else None
+
+
 def require_known_team(team_id: int) -> None:
     if team_id not in TEAM_BY_ID:
         raise UnknownTeamError(f"Unknown team_id {team_id}")

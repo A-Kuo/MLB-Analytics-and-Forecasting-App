@@ -21,7 +21,7 @@ This is a webapp that ingests live and historical MLB data from the **MLB Stats 
 - **Live data fetching**: Player game logs refresh in near-real-time via the MLB Stats API upon game post
 - **Team logo rendering**: Team selector includes official MLB team logos fetched from the MLB CDN
 - **Regression overlay with uncertainty**: Dotted ensemble trend line + shaded 95% CI band, validated on a chronological 80/20 holdout, on every trajectory chart
-- **Filterable news feed**: Toggleable live headlines filtered by selected team name keywords
+- **Team news feed**: Toggleable headlines for the selected team(s) (MLB.com + SB Nation), pre-ingested into Postgres on a 6-hour schedule rather than fetched live per request
 - **Individual player drill-down**: Team + season selection narrows to a roster; selecting a player renders their own KPIs, trend chart, and game log
 - **Team-level rolling aggregates**: 10-game rolling runs scored (offense) and runs allowed (defense) for the selected team
 
