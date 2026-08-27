@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------
+ * Design tokens, transcribed 1:1 from DESIGN.md's YAML front matter.
+ * "Notion Sans" in DESIGN.md is Notion's own proprietary branded font,
+ * not something this project can license/embed -- DESIGN.md itself names
+ * the real basis (Inter), so --font-sans below is aliased to the Inter
+ * variable font loaded in app/layout.tsx via next/font/google. The token
+ * NAME stays "sans" (not "notion-sans") since nothing here is actually
+ * Notion's font file.
+ * ------------------------------------------------------------------- */
+@theme {
+  --font-sans: var(--font-inter), Inter, -apple-system, system-ui, "Segoe UI", Helvetica, sans-serif;
+
+  /* colors.* */
+  --color-primary: #5645d4;
+  --color-primary-pressed: #4534b3;
+  --color-primary-deep: #3a2a99;
+  --color-on-primary: #ffffff;
+  --color-brand-navy: #0a1530;
+  --color-brand-navy-deep: #070f24;
+  --color-brand-navy-mid: #1a2a52;
+  --color-link-blue: #0075de;
+  --color-link-blue-pressed: #005bab;
+  --color-brand-orange: #dd5b00;
+  --color-brand-orange-deep: #793400;
+  --color-brand-pink: #ff64c8;
+  --color-brand-pink-deep: #a02e6d;
+  --color-brand-purple: #7b3ff2;
+  --color-brand-purple-300: #d6b6f6;
+  --color-brand-purple-800: #391c57;
+  --color-brand-teal: #2a9d99;
+  --color-brand-green: #1aae39;
+  --color-brand-yellow: #f5d75e;
+  --color-brand-brown: #523410;
+  --color-card-tint-peach: #ffe8d4;
+  --color-card-tint-rose: #fde0ec;
+  --color-card-tint-mint: #d9f3e1;
+  --color-card-tint-lavender: #e6e0f5;
+  --color-card-tint-sky: #dcecfa;
+  --color-card-tint-yellow: #fef7d6;
+  --color-card-tint-yellow-bold: #f9e79f;
+  --color-card-tint-cream: #f8f5e8;
+  --color-card-tint-gray: #f0eeec;
+  --color-canvas: #ffffff;
+  --color-surface: #f6f5f4;
+  --color-surface-soft: #fafaf9;
+  --color-hairline: #e5e3df;
+  --color-hairline-soft: #ede9e4;
+  --color-hairline-strong: #c8c4be;
+  --color-ink-deep: #000000;
+  --color-ink: #1a1a1a;
+  --color-charcoal: #37352f;
+  --color-slate: #5d5b54;
+  --color-steel: #787671;
+  --color-stone: #a4a097;
+  --color-muted: #bbb8b1;
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: #a4a097;
+  --color-semantic-success: #1aae39;
+  --color-semantic-warning: #dd5b00;
+  --color-semantic-error: #e03131;
+
+  /* rounded.* */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-xxl: 20px;
+  --radius-xxxl: 24px;
+  --radius-full: 9999px;
+
+  /* spacing.* -- named tokens alongside Tailwind's default numeric scale */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --spacing-xxxl: 40px;
+  --spacing-section-sm: 48px;
+  --spacing-section: 64px;
+  --spacing-section-lg: 96px;
+  --spacing-hero: 120px;
+}
+
+/* ---------------------------------------------------------------------
+ * typography.* -- DESIGN.md's named text styles bundle size/weight/
+ * line-height/letter-spacing together, which doesn't line up with
+ * Tailwind's own text-* scale, so these are custom utilities instead
+ * (usable directly as classes: className="text-heading-1"). Wrapped as
+ * reusable <Heading>/<Text> variants in components/ui/Typography.tsx
+ * rather than applied ad hoc everywhere.
+ * ------------------------------------------------------------------- */
+@utility text-hero-display {
+  font-size: 80px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -2px;
+}
+@utility text-display-lg {
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.10;
+  letter-spacing: -1px;
+}
+@utility text-heading-1 {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+@utility text-heading-2 {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.20;
+  letter-spacing: -0.5px;
+}
+@utility text-heading-3 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+@utility text-heading-4 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.30;
+}
+@utility text-heading-5 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.40;
+}
+@utility text-subtitle {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.50;
+}
+@utility text-body-md {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+@utility text-body-md-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+@utility text-body-sm {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.50;
+}
+@utility text-body-sm-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.50;
+}
+@utility text-caption {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.40;
+}
+@utility text-caption-bold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.40;
+}
+@utility text-micro {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.40;
+}
+@utility text-micro-uppercase {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.40;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+@utility text-button-md {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.30;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}

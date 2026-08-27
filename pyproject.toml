@@ -1,0 +1,27 @@
+[project]
+name = "mlb-analytics-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+# Vercel's Python builder prefers pyproject.toml over requirements.txt when
+# both exist -- this deliberately overrides requirements.txt (which lists
+# streamlit/plotly/uvicorn[standard] for Streamlit Cloud's app.py) with only
+# what api/index.py's import chain (macroservice/*.py) actually needs at
+# runtime. requirements.txt itself is untouched: Streamlit Cloud only ever
+# reads that file, never this one.
+#
+# The bloated set blew Vercel's 500MB uncompressed function-size limit
+# (measured: 564.93MB) -- streamlit alone drags in pyarrow/altair/tornado,
+# and uvicorn[standard]'s extras (uvloop/httptools/websockets/watchfiles)
+# exist only for local dev serving, not Vercel's own ASGI runtime. Same
+# version floors as requirements.txt so both files resolve compatible
+# versions despite being read by different platforms now.
+dependencies = [
+    "fastapi>=0.110",
+    "python-dotenv>=1.0",
+    "scikit-learn>=1.4",
+    "pandas>=2.0",
+    "requests>=2.31",
+    "feedparser>=6.0",
+    "SQLAlchemy>=2.0",
+    "psycopg[binary]>=3.1",
+]

@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\GitHub\\Full MLB Analytics Dashboard with Regression and News Feed\\.venv\\Scripts\\streamlit.exe",
       "runtimeArgs": ["run", "app.py", "--server.headless", "true"],
       "port": 8501
+    },
+    {
+      "name": "nextjs",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
     }
   ]
 }
