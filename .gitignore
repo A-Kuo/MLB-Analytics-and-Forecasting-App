@@ -14,3 +14,12 @@ venv/
 notebooks/**/build_*.py
 notebooks/**/validate*
 notebooks/_notebook_common.py
+
+# Next.js / Node (Vercel branch frontend)
+/node_modules
+/.next/
+/out/
+/build
+*.tsbuildinfo
+next-env.d.ts
+.vercel
