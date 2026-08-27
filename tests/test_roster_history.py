@@ -149,6 +149,29 @@ def test_active_years_label_multiple_ranges():
 
 
 # ---------------------------------------------------------------------------
+# active_years_label -- the public wrapper for callers outside this module
+# (e.g. macroservice/insights_db.py's leaderboard, which only has raw bio
+# fields, not a full roster row)
+# ---------------------------------------------------------------------------
+
+
+def test_active_years_label_still_active():
+    assert roster_history.active_years_label(2022, None, True) == "2022–present"
+
+
+def test_active_years_label_retired():
+    assert roster_history.active_years_label(1998, 2004, False) == "1998–2004"
+
+
+def test_active_years_label_missing_debut():
+    assert roster_history.active_years_label(None, None, False) == ""
+
+
+def test_active_years_label_retired_with_unknown_last_active_year_falls_back_to_debut_season():
+    assert roster_history.active_years_label(1890, None, False) == "1890–1890"
+
+
+# ---------------------------------------------------------------------------
 # get_team_roster_with_active_years
 # ---------------------------------------------------------------------------
 

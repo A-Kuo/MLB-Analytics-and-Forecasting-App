@@ -72,6 +72,20 @@ def fetch_team_roster_rows(engine: Engine, team_id: int) -> list[dict]:
     return [{**row, "positions": list(row["positions"])} for row in rows]
 
 
+def upsert_players_bio(engine: Engine, players_rows: list[dict]) -> None:
+    """Upserts only the ``players`` table (id/name/debut_year/
+    last_active_year/active) -- no roster_stints write. Shared with
+    scripts/backfill_season_leaderboard.py, which needs player bios but
+    writes season-scoped team associations elsewhere
+    (macroservice/insights_db.py's player_season_team), not this module's
+    all-time roster_stints.
+    """
+    if not players_rows:
+        return
+    with engine.begin() as conn:
+        conn.execute(_UPSERT_PLAYER_SQL, players_rows)
+
+
 def upsert_team_roster(engine: Engine, team_id: int, roster: list[dict]) -> None:
     """Writes one team's roster, replacing whatever was there for those
     players. Takes the enriched shape from

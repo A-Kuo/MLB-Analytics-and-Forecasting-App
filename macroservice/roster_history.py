@@ -120,6 +120,16 @@ def _active_years_label(ranges: list[tuple[int, int | None]]) -> str:
     return ", ".join(f"{start}–{'present' if end is None else end}" for start, end in ranges)
 
 
+def active_years_label(debut_year: int | None, last_active_year: int | None, active: bool) -> str:
+    """Public entry point for the "years active" display string, reusing
+    the corrected _active_year_ranges logic -- for callers outside this
+    module (e.g. macroservice/insights_db.py) that only have raw bio
+    fields, not a full roster row.
+    """
+    ranges = _active_year_ranges({"debut_year": debut_year, "last_active_year": last_active_year, "active": active})
+    return _active_years_label(ranges)
+
+
 def enrich_with_active_years(rows: list[dict]) -> list[dict]:
     """Attaches active_year_ranges/active_years_label to bio+stint rows --
     each row needs id/name/positions/is_pitcher/debut_year/last_active_year/

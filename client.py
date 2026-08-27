@@ -14,7 +14,7 @@ import logging
 
 import streamlit as st
 
-from macroservice import news, players, roster_history, roster_history_db, season_stats_db, statcast_season, teams, trajectories
+from macroservice import insights_db, news, players, roster_history, roster_history_db, season_stats_db, statcast_season, teams, trajectories
 from utils.aggregation import aggregate_scalar, aggregate_series
 from utils.filters import STATCAST_METRIC_KEYS, is_rate_metric
 
@@ -374,3 +374,19 @@ def get_team_metric_forecast(team_id: int, metric: str, group: str, train_start:
 @st.cache_data(ttl=300)
 def get_news(keywords: list[str], limit: int = 10, days: int = news.DEFAULT_LOOKBACK_DAYS) -> list[dict]:
     return news.get_headlines(keywords, limit, days)
+
+
+@st.cache_data(ttl=300)
+def get_insights_leaderboard(
+    metric_key: str, group: str, season: int, team_ids: frozenset[int], limit: int = 10
+) -> list[dict]:
+    """Top ``limit`` players for one metric/season among ``team_ids`` --
+    Postgres-only, no live-API fallback (unlike every other function in this
+    module): a leaderboard needs real coverage across hundreds of players to
+    mean anything, and falling back to the live API on a miss would mean
+    thousands of API calls on a single page load. Coverage instead comes
+    from scripts/backfill_season_leaderboard.py, run per-season on demand.
+    Raises if Postgres isn't reachable -- pages/insights.py surfaces that as
+    one clear page-level message rather than silently degrading.
+    """
+    return insights_db.top_players_by_metric(_db_engine(), metric_key, group, season, team_ids, limit)

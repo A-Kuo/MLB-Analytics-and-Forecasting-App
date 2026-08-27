@@ -1,10 +1,11 @@
 """Tests for the Forecast section's checkbox/compute state machine.
 
 This exercises the real utils.metric_selection.metric_button_state_machine
-helper (the same one app.py's Forecast section and Performance Trend's
-Visualize button both use -- see tests/test_metric_selection.py for direct
-coverage of the helper itself) via a minimal standalone script matching
-app.py's Forecast wiring: compute only on button press; unchecking a metric
+helper (the same one pages/analytics_and_forecasts.py's Forecast section and
+Performance Trend's Visualize button both use -- see
+tests/test_metric_selection.py for direct coverage of the helper itself) via
+a minimal standalone script matching that page's Forecast wiring: compute
+only on button press; unchecking a metric
 drops it from the display without recomputing; checking a metric that was
 never computed clears the display until Forecast is pressed again. AppTest
 is used because this behavior lives entirely in Streamlit's session_state/

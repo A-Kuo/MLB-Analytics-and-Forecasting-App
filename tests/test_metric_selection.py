@@ -5,8 +5,8 @@ session_state/widget machinery -- see tests/test_timeline.py and
 tests/test_forecast_state_machine.py for the same rationale. This exercises
 the real utils.metric_selection functions directly (not a duplicated inline
 script), covering the subject-change reset half separately from the
-button/checkbox half, then a combined script mirroring how app.py wires
-Performance Trend's Visualize button.
+button/checkbox half, then a combined script mirroring how
+pages/analytics_and_forecasts.py wires Performance Trend's Visualize button.
 """
 from __future__ import annotations
 

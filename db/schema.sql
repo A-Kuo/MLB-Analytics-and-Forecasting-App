@@ -194,6 +194,22 @@ CREATE TABLE IF NOT EXISTS player_game_log_pitching (
     PRIMARY KEY (player_id, season, game_date, game_index)
 );
 
+-- Who was actually on team X during season Y specifically
+-- (macroservice.teams.get_roster(team_id, season)) -- distinct from
+-- roster_stints above, which is all-time with no season scoping and
+-- would incorrectly include a player long-traded away by season Y.
+-- Powers the Insights leaderboard's team+season filter. team_id is part of
+-- the PK (not just player_id, season) so a player traded mid-season
+-- legitimately gets two rows for that season -- not a conflict, both real.
+CREATE TABLE IF NOT EXISTS player_season_team (
+    player_id  BIGINT NOT NULL REFERENCES players(id),
+    team_id    INTEGER NOT NULL,
+    season     INTEGER NOT NULL,
+    position   TEXT,             -- roster-listed position abbreviation, informational only
+    is_pitcher BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (player_id, team_id, season)
+);
+
 -- Team season stats: currently zero call sites in app.py (Team Trends is
 -- commented out) -- cached anyway for when that's revived. Tiny volume
 -- (30 teams x ~125 years x 2 groups), lazy-only for consistency with the

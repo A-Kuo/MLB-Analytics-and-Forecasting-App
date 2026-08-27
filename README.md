@@ -42,7 +42,7 @@ One deployable Streamlit app backed by an in-process `macroservice/` package: th
 ```
 Full MLB Analytics Dashboard/
 │
-├── app.py                    # Streamlit entry point — single page, all sections
+├── app.py                    # Streamlit entry point — thin router (st.navigation) over pages/
 ├── client.py                 # Streamlit-facing facade over macroservice/, with @st.cache_data
 ├── chart.py                  # Pure Plotly rendering of a pre-fit trajectory payload
 ├── requirements.txt

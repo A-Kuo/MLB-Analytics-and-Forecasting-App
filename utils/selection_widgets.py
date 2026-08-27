@@ -15,7 +15,7 @@ from utils.player_selection import player_flag_label
 from utils.positions import POSITION_FULL_NAMES, POSITION_GROUPS
 
 
-def _sync_bulk_checkbox(checkbox_key: str, ids_key: str, candidate_ids: frozenset) -> None:
+def sync_bulk_checkbox(checkbox_key: str, ids_key: str, candidate_ids: frozenset) -> None:
     if st.session_state[checkbox_key]:
         st.session_state[ids_key] = st.session_state[ids_key] | candidate_ids
     else:
@@ -60,7 +60,7 @@ def render_player_selection(prefix: str, bio_by_id: dict, candidate_ids_by_posit
     # `selected` still holds stale ids that fell out of `all_ids` after a
     # Timeline change.
     st.session_state[all_key] = bool(all_ids) and selected >= all_ids
-    st.checkbox("All Players", key=all_key, on_change=_sync_bulk_checkbox, args=(all_key, ids_key, all_ids))
+    st.checkbox("All Players", key=all_key, on_change=sync_bulk_checkbox, args=(all_key, ids_key, all_ids))
 
     for group_name, positions in POSITION_GROUPS.items():
         cols = st.columns([2] + [2] * len(positions))
@@ -72,7 +72,7 @@ def render_player_selection(prefix: str, bio_by_id: dict, candidate_ids_by_posit
             col.checkbox(
                 POSITION_FULL_NAMES[position],
                 key=pos_key,
-                on_change=_sync_bulk_checkbox,
+                on_change=sync_bulk_checkbox,
                 args=(pos_key, ids_key, pos_ids),
             )
 
