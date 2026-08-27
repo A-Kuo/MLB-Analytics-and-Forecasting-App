@@ -1,0 +1,10 @@
+# For running/validating the local CPU smoke-test notebooks
+# (notebooks/season_aggregate_smoke.ipynb, notebooks/statcast_era_smoke.ipynb)
+# and scripts/kaggle_helper.py. The GPU notebooks need none of this --
+# Kaggle ships torch+CUDA preinstalled (see notebooks/kaggle/*/kernel-metadata.json).
+-r requirements.txt
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+jupyter>=1.0
+nbconvert>=7.0
+kaggle>=1.6

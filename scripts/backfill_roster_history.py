@@ -22,7 +22,7 @@ from sqlalchemy import create_engine
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from macroservice import roster_history, roster_history_db, teams  # noqa: E402  (needs the path insert above)
+from macroservice import db, roster_history, roster_history_db, teams  # noqa: E402  (needs the path insert above)
 
 
 def backfill(engine, team_ids: list[int]) -> list[tuple[int, Exception]]:
@@ -50,7 +50,7 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv()
-    database_url = roster_history_db.resolve_database_url()
+    database_url = db.resolve_database_url()
     if not database_url:
         print(
             "No database connection string found -- set DATABASE_URL (environment or .env), "
@@ -62,7 +62,7 @@ def main() -> int:
     team_ids = [args.team_id] if args.team_id else [team["id"] for team in teams.TEAMS]
 
     engine = create_engine(database_url)
-    roster_history_db.ensure_schema(engine)
+    db.ensure_schema(engine)
     failures = backfill(engine, team_ids)
 
     succeeded = len(team_ids) - len(failures)

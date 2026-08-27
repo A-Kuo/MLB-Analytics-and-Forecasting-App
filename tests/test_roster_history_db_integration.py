@@ -18,9 +18,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import create_engine, text
 
-from macroservice import roster_history, roster_history_db
+from macroservice import db, roster_history, roster_history_db
 
-DATABASE_URL = roster_history_db.resolve_database_url()
+DATABASE_URL = db.resolve_database_url()
 
 pytestmark = pytest.mark.skipif(
     not DATABASE_URL, reason="requires DATABASE_URL or a local .streamlit/secrets.toml"
@@ -53,7 +53,7 @@ _ROSTER = [
 @pytest.fixture
 def engine():
     eng = create_engine(DATABASE_URL)
-    roster_history_db.ensure_schema(eng)
+    db.ensure_schema(eng)
     yield eng
     with eng.begin() as conn:
         conn.execute(text("DELETE FROM roster_stints WHERE team_id = :t"), {"t": TEST_TEAM_ID})
@@ -64,7 +64,7 @@ def engine():
 
 
 def test_ensure_schema_is_idempotent(engine):
-    roster_history_db.ensure_schema(engine)  # second call must not raise
+    db.ensure_schema(engine)  # second call must not raise
 
 
 def test_upsert_then_fetch_round_trip(engine):

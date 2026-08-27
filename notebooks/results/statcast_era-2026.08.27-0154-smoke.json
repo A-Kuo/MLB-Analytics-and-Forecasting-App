@@ -1,0 +1,813 @@
+{
+  "schema_version": "1.0",
+  "track": "statcast_era",
+  "model_version": "statcast_era-2026.08.27-0154-smoke",
+  "run_timestamp_utc": "2026-08-27T01:54:06.560853+00:00",
+  "environment": "local_smoke",
+  "git_commit": "b58225d",
+  "random_seed": 42,
+  "hyperparameters": {
+    "hidden_dims": [
+      8,
+      8
+    ],
+    "embedding_dim": 2,
+    "dropout": 0.3,
+    "lr": 0.001,
+    "weight_decay": 0.001,
+    "epochs_trained": 30
+  },
+  "targets": [
+    "win_pct",
+    "runs_scored_per_game",
+    "runs_allowed_per_game",
+    "team_ops",
+    "team_era"
+  ],
+  "feature_list": [
+    "year_norm",
+    "team_avg_exit_velocity",
+    "team_hard_hit_pct",
+    "team_barrel_pct",
+    "team_xba",
+    "team_csw_pct",
+    "team_whiff_pct",
+    "team_chase_pct",
+    "team_avg_velocity",
+    "lag_1_team_avg_exit_velocity",
+    "lag_1_team_hard_hit_pct",
+    "lag_1_team_barrel_pct",
+    "lag_1_team_xba",
+    "lag_1_team_csw_pct",
+    "lag_1_team_whiff_pct",
+    "lag_1_team_chase_pct",
+    "lag_1_team_avg_velocity",
+    "is_covid_2020",
+    "post_sticky_crackdown",
+    "pitch_clock_era",
+    "shift_limit_tightened_2025"
+  ],
+  "teams": [
+    {
+      "team_id": 108,
+      "abbreviation": "LAA",
+      "embedding_index": 0
+    },
+    {
+      "team_id": 109,
+      "abbreviation": "ARI",
+      "embedding_index": 1
+    },
+    {
+      "team_id": 117,
+      "abbreviation": "HOU",
+      "embedding_index": 2
+    },
+    {
+      "team_id": 121,
+      "abbreviation": "NYM",
+      "embedding_index": 3
+    },
+    {
+      "team_id": 147,
+      "abbreviation": "NYY",
+      "embedding_index": 4
+    }
+  ],
+  "training_window": {
+    "start_year": 2015,
+    "end_year": 2023
+  },
+  "holdout_window": {
+    "start_year": 2024,
+    "end_year": 2024
+  },
+  "regime_flags_used": [
+    "is_covid_2020",
+    "post_sticky_crackdown",
+    "pitch_clock_era",
+    "shift_limit_tightened_2025"
+  ],
+  "excluded_rows": [
+    {
+      "team_id": 108,
+      "year": 2020,
+      "reason": "covid_60_game_season"
+    },
+    {
+      "team_id": 109,
+      "year": 2020,
+      "reason": "covid_60_game_season"
+    },
+    {
+      "team_id": 117,
+      "year": 2020,
+      "reason": "covid_60_game_season"
+    },
+    {
+      "team_id": 121,
+      "year": 2020,
+      "reason": "covid_60_game_season"
+    },
+    {
+      "team_id": 147,
+      "year": 2020,
+      "reason": "covid_60_game_season"
+    }
+  ],
+  "baseline_comparison": {
+    "win_pct": {
+      "r2": -6.352422376466794,
+      "rmse": 0.1847478485776955
+    },
+    "runs_scored_per_game": {
+      "r2": -3.6197742490854976,
+      "rmse": 1.099778065591725
+    },
+    "runs_allowed_per_game": {
+      "r2": -11.447499334329981,
+      "rmse": 1.3164320616748697
+    },
+    "team_ops": {
+      "r2": -2.2787487759339857,
+      "rmse": 0.06643781116287147
+    },
+    "team_era": {
+      "r2": -8.539520684860232,
+      "rmse": 1.2025134941005247
+    }
+  },
+  "aggregate_holdout_metrics": {
+    "win_pct": {
+      "r2": -0.014525498344214682,
+      "rmse": 0.06862710028939432,
+      "n": 5
+    },
+    "runs_scored_per_game": {
+      "r2": -0.11059829334748117,
+      "rmse": 0.5392289217444872,
+      "n": 5
+    },
+    "runs_allowed_per_game": {
+      "r2": -0.5333916432708614,
+      "rmse": 0.4620446449382848,
+      "n": 5
+    },
+    "team_ops": {
+      "r2": -0.03492871923369556,
+      "rmse": 0.03732643083635469,
+      "n": 5
+    },
+    "team_era": {
+      "r2": -0.20691476323519598,
+      "rmse": 0.4277253411597725,
+      "n": 5
+    }
+  },
+  "holdout_predictions": [
+    {
+      "team_id": 108,
+      "year": 2024,
+      "metric": "win_pct",
+      "actual": 0.3888888888888889,
+      "predicted": 0.5201010971340795
+    },
+    {
+      "team_id": 109,
+      "year": 2024,
+      "metric": "win_pct",
+      "actual": 0.5493827160493827,
+      "predicted": 0.519838112436506
+    },
+    {
+      "team_id": 117,
+      "year": 2024,
+      "metric": "win_pct",
+      "actual": 0.546583850931677,
+      "predicted": 0.5160382461865439
+    },
+    {
+      "team_id": 121,
+      "year": 2024,
+      "metric": "win_pct",
+      "actual": 0.5493827160493827,
+      "predicted": 0.5204005111505444
+    },
+    {
+      "team_id": 147,
+      "year": 2024,
+      "metric": "win_pct",
+      "actual": 0.5802469135802469,
+      "predicted": 0.5195355875744058
+    },
+    {
+      "team_id": 108,
+      "year": 2024,
+      "metric": "runs_scored_per_game",
+      "actual": 3.919753086419753,
+      "predicted": 4.558166679237519
+    },
+    {
+      "team_id": 109,
+      "year": 2024,
+      "metric": "runs_scored_per_game",
+      "actual": 5.469135802469136,
+      "predicted": 4.587277063393073
+    },
+    {
+      "team_id": 117,
+      "year": 2024,
+      "metric": "runs_scored_per_game",
+      "actual": 4.596273291925466,
+      "predicted": 4.61504945521373
+    },
+    {
+      "team_id": 121,
+      "year": 2024,
+      "metric": "runs_scored_per_game",
+      "actual": 4.7407407407407405,
+      "predicted": 4.5636879874636715
+    },
+    {
+      "team_id": 147,
+      "year": 2024,
+      "metric": "runs_scored_per_game",
+      "actual": 5.030864197530864,
+      "predicted": 4.544148492731355
+    },
+    {
+      "team_id": 108,
+      "year": 2024,
+      "metric": "runs_allowed_per_game",
+      "actual": 4.919753086419753,
+      "predicted": 4.17027771175974
+    },
+    {
+      "team_id": 109,
+      "year": 2024,
+      "metric": "runs_allowed_per_game",
+      "actual": 4.864197530864198,
+      "predicted": 4.181679029079606
+    },
+    {
+      "team_id": 117,
+      "year": 2024,
+      "metric": "runs_allowed_per_game",
+      "actual": 4.031055900621118,
+      "predicted": 4.171491408403679
+    },
+    {
+      "team_id": 121,
+      "year": 2024,
+      "metric": "runs_allowed_per_game",
+      "actual": 4.302469135802469,
+      "predicted": 4.166520335752956
+    },
+    {
+      "team_id": 147,
+      "year": 2024,
+      "metric": "runs_allowed_per_game",
+      "actual": 4.1234567901234565,
+      "predicted": 4.164410654405461
+    },
+    {
+      "team_id": 108,
+      "year": 2024,
+      "metric": "team_ops",
+      "actual": 0.67,
+      "predicted": 0.7411524148006216
+    },
+    {
+      "team_id": 109,
+      "year": 2024,
+      "metric": "team_ops",
+      "actual": 0.777,
+      "predicted": 0.7390707663770604
+    },
+    {
+      "team_id": 117,
+      "year": 2024,
+      "metric": "team_ops",
+      "actual": 0.74,
+      "predicted": 0.7419983457613947
+    },
+    {
+      "team_id": 121,
+      "year": 2024,
+      "metric": "team_ops",
+      "actual": 0.734,
+      "predicted": 0.7422657774540975
+    },
+    {
+      "team_id": 147,
+      "year": 2024,
+      "metric": "team_ops",
+      "actual": 0.762,
+      "predicted": 0.7421832687604676
+    },
+    {
+      "team_id": 108,
+      "year": 2024,
+      "metric": "team_era",
+      "actual": 4.56,
+      "predicted": 3.976475021752093
+    },
+    {
+      "team_id": 109,
+      "year": 2024,
+      "metric": "team_era",
+      "actual": 4.62,
+      "predicted": 3.9298898246269607
+    },
+    {
+      "team_id": 117,
+      "year": 2024,
+      "metric": "team_era",
+      "actual": 3.74,
+      "predicted": 3.9153928191816703
+    },
+    {
+      "team_id": 121,
+      "year": 2024,
+      "metric": "team_era",
+      "actual": 3.96,
+      "predicted": 3.977689420789955
+    },
+    {
+      "team_id": 147,
+      "year": 2024,
+      "metric": "team_era",
+      "actual": 3.74,
+      "predicted": 3.9986809353822084
+    }
+  ],
+  "forward_forecasts": [
+    {
+      "team_id": 108,
+      "year": 2025,
+      "metric": "win_pct",
+      "predicted": 0.5167147332138837,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2025,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.595840678404875,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2025,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.1748383031624785,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2025,
+      "metric": "team_ops",
+      "predicted": 0.7407107811521232,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2025,
+      "metric": "team_era",
+      "predicted": 3.9290668606189776,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2026,
+      "metric": "win_pct",
+      "predicted": 0.5162726688840856,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2026,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.591961342718153,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2026,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.173530076553137,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2026,
+      "metric": "team_ops",
+      "predicted": 0.740890457487845,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 108,
+      "year": 2026,
+      "metric": "team_era",
+      "predicted": 3.934352607089376,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2025,
+      "metric": "win_pct",
+      "predicted": 0.5205992359192342,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2025,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.574715160578317,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2025,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.182646440281155,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2025,
+      "metric": "team_ops",
+      "predicted": 0.7385632240835559,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2025,
+      "metric": "team_era",
+      "predicted": 3.9412049936025215,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2026,
+      "metric": "win_pct",
+      "predicted": 0.5195437827998001,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2026,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.575082665915066,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2026,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.180166103269211,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2026,
+      "metric": "team_ops",
+      "predicted": 0.7390913967642098,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 109,
+      "year": 2026,
+      "metric": "team_era",
+      "predicted": 3.9436074570826,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2025,
+      "metric": "win_pct",
+      "predicted": 0.5164572059049896,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2025,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.6155222825766575,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2025,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.173123670442696,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2025,
+      "metric": "team_ops",
+      "predicted": 0.7416439600047136,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2025,
+      "metric": "team_era",
+      "predicted": 3.9127966511728305,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2026,
+      "metric": "win_pct",
+      "predicted": 0.5168319847891067,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2026,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.617494573510415,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2026,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.176060670839447,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2026,
+      "metric": "team_ops",
+      "predicted": 0.7410006692495669,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 117,
+      "year": 2026,
+      "metric": "team_era",
+      "predicted": 3.906597064236094,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2025,
+      "metric": "win_pct",
+      "predicted": 0.5202865922759354,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2025,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.561531605798426,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2025,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.167748878131232,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2025,
+      "metric": "team_ops",
+      "predicted": 0.7418907698802456,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2025,
+      "metric": "team_era",
+      "predicted": 3.977607314636086,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2026,
+      "metric": "win_pct",
+      "predicted": 0.5204995377049627,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2026,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.56707345904194,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2026,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.170908738128999,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2026,
+      "metric": "team_ops",
+      "predicted": 0.7412728150426625,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 121,
+      "year": 2026,
+      "metric": "team_era",
+      "predicted": 3.9674491074927767,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2025,
+      "metric": "win_pct",
+      "predicted": 0.5191287957482531,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2025,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.533411869495754,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2025,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.157832853386859,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2025,
+      "metric": "team_ops",
+      "predicted": 0.743494647503953,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2025,
+      "metric": "team_era",
+      "predicted": 4.019109611145048,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2026,
+      "metric": "win_pct",
+      "predicted": 0.5193417399582971,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2026,
+      "metric": "runs_scored_per_game",
+      "predicted": 4.538953722739269,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2026,
+      "metric": "runs_allowed_per_game",
+      "predicted": 4.160992713384625,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2026,
+      "metric": "team_ops",
+      "predicted": 0.7428766926663699,
+      "ci_lower": null,
+      "ci_upper": null
+    },
+    {
+      "team_id": 147,
+      "year": 2026,
+      "metric": "team_era",
+      "predicted": 4.008951419789866,
+      "ci_lower": null,
+      "ci_upper": null
+    }
+  ],
+  "loss_curve": {
+    "train": [
+      1.0545508861541748,
+      1.070945143699646,
+      1.0344125032424927,
+      1.042267918586731,
+      1.0422030687332153,
+      1.0239967107772827,
+      1.0355675220489502,
+      1.0302162170410156,
+      1.0327069759368896,
+      1.0136234760284424,
+      1.041059970855713,
+      1.0274336338043213,
+      0.9976811408996582,
+      1.012285828590393,
+      1.024559497833252,
+      1.0033656358718872,
+      0.9969542026519775,
+      1.0045865774154663,
+      0.9959147572517395,
+      0.9992870688438416,
+      1.023984432220459,
+      1.0259028673171997,
+      1.0021677017211914,
+      1.0024149417877197,
+      1.0090324878692627,
+      1.0184143781661987,
+      0.9910657405853271,
+      1.0059726238250732,
+      0.9628732204437256,
+      0.9773993492126465
+    ],
+    "val": [
+      0.8426001071929932,
+      0.8422828912734985,
+      0.8418084979057312,
+      0.8412554264068604,
+      0.8405401110649109,
+      0.8398347496986389,
+      0.8392362594604492,
+      0.8385105729103088,
+      0.8378693461418152,
+      0.8372970223426819,
+      0.8366790413856506,
+      0.836023211479187,
+      0.8353489637374878,
+      0.834648847579956,
+      0.8339290618896484,
+      0.8331507444381714,
+      0.8323758840560913,
+      0.8316392302513123,
+      0.8308351635932922,
+      0.8299839496612549,
+      0.8291210532188416,
+      0.8282055854797363,
+      0.8273391723632812,
+      0.8265377879142761,
+      0.8258167505264282,
+      0.8250476717948914,
+      0.824242889881134,
+      0.8233747482299805,
+      0.8225409984588623,
+      0.8217204213142395
+    ]
+  },
+  "notes": "CPU smoke test on 5 teams, leave-team-out internal validation -- pipeline correctness check only, not a quality signal."
+}

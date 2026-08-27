@@ -45,7 +45,7 @@ _resolve = client.resolve_players_in_range.__wrapped__
 
 @patch("client.roster_history.get_team_roster_with_active_years")
 @patch("client.roster_history_db.fetch_team_roster_rows")
-@patch("client._roster_engine")
+@patch("client._db_engine")
 def test_db_hit_skips_the_live_api(mock_engine, mock_fetch, mock_api):
     mock_fetch.return_value = _DB_ROWS
     roster = _get_roster(147)
@@ -59,7 +59,7 @@ def test_db_hit_skips_the_live_api(mock_engine, mock_fetch, mock_api):
 @patch("client.roster_history_db.upsert_team_roster")
 @patch("client.roster_history.get_team_roster_with_active_years")
 @patch("client.roster_history_db.fetch_team_roster_rows")
-@patch("client._roster_engine")
+@patch("client._db_engine")
 def test_empty_db_falls_back_to_api_and_self_heals(mock_engine, mock_fetch, mock_api, mock_upsert):
     mock_fetch.return_value = []  # team not backfilled yet
     mock_api.return_value = _API_ROSTER
@@ -73,7 +73,7 @@ def test_empty_db_falls_back_to_api_and_self_heals(mock_engine, mock_fetch, mock
 @patch("client.roster_history_db.upsert_team_roster")
 @patch("client.roster_history.get_team_roster_with_active_years")
 @patch("client.roster_history_db.fetch_team_roster_rows")
-@patch("client._roster_engine")
+@patch("client._db_engine")
 def test_db_read_error_falls_back_to_api(mock_engine, mock_fetch, mock_api, mock_upsert):
     mock_fetch.side_effect = RuntimeError("connection refused")
     mock_api.return_value = _API_ROSTER
@@ -83,7 +83,7 @@ def test_db_read_error_falls_back_to_api(mock_engine, mock_fetch, mock_api, mock
 @patch("client.roster_history_db.upsert_team_roster")
 @patch("client.roster_history.get_team_roster_with_active_years")
 @patch("client.roster_history_db.fetch_team_roster_rows")
-@patch("client._roster_engine")
+@patch("client._db_engine")
 def test_upsert_error_still_serves_live_data(mock_engine, mock_fetch, mock_api, mock_upsert):
     mock_fetch.return_value = []
     mock_api.return_value = _API_ROSTER
@@ -93,7 +93,7 @@ def test_upsert_error_still_serves_live_data(mock_engine, mock_fetch, mock_api, 
 
 @patch("client.roster_history.get_team_roster_with_active_years")
 @patch("client.roster_history_db.fetch_team_roster_rows")
-@patch("client._roster_engine")
+@patch("client._db_engine")
 def test_missing_secrets_config_falls_back_to_api(mock_engine, mock_fetch, mock_api):
     # No .streamlit/secrets.toml -> st.connection raises; the dashboard has
     # to keep working exactly as it did before this migration.

@@ -7,7 +7,10 @@ venv/
 # Only the secrets file -- a .streamlit/config.toml (theming) should be committed.
 .streamlit/secrets.toml
 
-notebooks/build_notebook.py
-notebooks/validate.py
-notebooks/validate2.txt
-# all file regardless of extension in the notebooks directory
+# Generator/validator tooling stays local-only; the .ipynb files themselves
+# are the tracked artifact. Glob (not the three literal filenames this used
+# to list) so new build_*.py/validate*.py scripts are covered automatically,
+# including the ones nested under notebooks/kaggle/<kernel>/.
+notebooks/**/build_*.py
+notebooks/**/validate*
+notebooks/_notebook_common.py

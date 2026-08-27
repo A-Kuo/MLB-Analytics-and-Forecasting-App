@@ -1,0 +1,15 @@
+{
+  "id": "<your-kaggle-username>/mlb-season-aggregate-forecast-gpu",
+  "title": "MLB Season-Aggregate Team Forecast (GPU)",
+  "code_file": "season_aggregate_gpu.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": ["baseball", "mlb", "pytorch", "forecasting"],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": []
+}

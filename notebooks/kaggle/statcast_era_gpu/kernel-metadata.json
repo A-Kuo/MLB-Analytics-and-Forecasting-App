@@ -1,0 +1,15 @@
+{
+  "id": "<your-kaggle-username>/mlb-statcast-era-forecast-gpu",
+  "title": "MLB Statcast-Era Team Forecast (GPU)",
+  "code_file": "statcast_era_gpu.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": ["baseball", "mlb", "pytorch", "forecasting", "statcast"],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": []
+}
