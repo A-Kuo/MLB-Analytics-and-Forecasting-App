@@ -53,20 +53,16 @@ import streamlit as st
 from chart import build_forecast_figure, build_multi_metric_figure  # build_trajectory_figure: see Team Trends below
 import client
 from macroservice.players import headshot_url
-from macroservice.teams import GENERAL_NEWS_HUB_URL, team_news_hub_url
-from utils.constants import EARLIEST_SEASON, FORECAST_MAX_YEAR
+from utils.constants import EARLIEST_SEASON, forecast_max_year
 from utils.filters import GAME_LOG_COLUMNS, full_name_for_metric, metrics_for_group
 from utils.formatters import format_stat
 from utils.metric_selection import metric_button_state_machine, reset_on_subject_change
-from utils.news_cards import merge_and_cap_keywords, news_card_html
 from utils.player_selection import group_for_selection
 from utils.positions import ALL_POSITIONS
 from utils.selection_widgets import render_player_selection, render_portrait_wall
 from utils.timeline import pushed_year_control, year_range_control
 
 REVEAL_FRAME_SECONDS = 0.06
-NEWS_LOOKBACK_DAYS = 7
-MAX_NEWS_KEYWORDS = 20
 
 
 def k(prefix: str, name: str) -> str:
@@ -327,7 +323,7 @@ def render_dashboard_panel(
     forecast_end = pushed_year_control(
         k(key_prefix, "forecast"),
         perf_end,
-        FORECAST_MAX_YEAR,
+        forecast_max_year(),
         slider_floor_year=EARLIEST_SEASON,
         label="Scrubber 3 (forecast horizon)",
     )
@@ -386,9 +382,11 @@ def render_dashboard_panel(
         elif forecast_end <= perf_end:
             # Scrubber 3 at or before scrubber 2 -- a zero-or-negative-width
             # forecast window. Not just ==: forecast_end is clamped to
-            # FORECAST_MAX_YEAR, so it can end up *before* perf_end whenever
-            # perf_end itself exceeds that fixed ceiling (e.g. perf_end is the
-            # current year and that's later than FORECAST_MAX_YEAR).
+            # forecast_max_year(), so it can end up *before* perf_end
+            # whenever perf_end itself exceeds that ceiling (e.g. perf_end
+            # is the current year and that's later than forecast_max_year()
+            # -- shouldn't happen in practice since the ceiling is always
+            # 10 years out, but the clamp is defensive either way).
             st.info("Widen the forecast horizon: scrubber 3 is at or before scrubber 2.")
         elif not forecast_selected_metrics:
             st.info("Select one or more metrics, then press Forecast.")
@@ -457,52 +455,13 @@ with panel_a_col:
 with panel_b_col:
     panel_b = render_dashboard_panel("b", team_by_name, default_team_name=None, narrow=True)
 
-def _panel_team_keywords(panel: PanelSelection) -> list[str]:
-    return list(panel.team["keywords"]) if panel.team else []
+def _panel_team_ids(panel: PanelSelection) -> list[int]:
+    return [panel.team["id"]] if panel.team else []
 
 
-def _panel_player_names(panel: PanelSelection) -> list[str]:
-    return [panel.bio_by_id[pid]["name"] for pid in panel.selected_ids if pid in panel.bio_by_id]
-
-
-with st.sidebar:
-    show_news = st.toggle("News Feed", value=False)
-    if show_news:
-        st.subheader("News")
-        # One merged feed across both panels: team keywords take priority
-        # over individual player names, and the whole thing is capped (a
-        # bulk-group selection can run to hundreds of player names -- see
-        # macroservice/roster_history.py -- which would otherwise blow up
-        # the query and drown out the broader team-level signal).
-        news_keywords = merge_and_cap_keywords(
-            [
-                _panel_team_keywords(panel_a),
-                _panel_team_keywords(panel_b),
-                _panel_player_names(panel_a),
-                _panel_player_names(panel_b),
-            ],
-            MAX_NEWS_KEYWORDS,
-        )
-
-        hub_links = {GENERAL_NEWS_HUB_URL: "MLB.com News"}
-        for panel in (panel_a, panel_b):
-            if panel.team:
-                # setdefault: a team with no verified hub slug maps to the
-                # same GENERAL_NEWS_HUB_URL already keyed above, so it's a
-                # no-op rather than a redundant second link to that URL --
-                # this is what "fallback to general" means in practice.
-                hub_links.setdefault(team_news_hub_url(panel.team["id"]), f"{panel.team['name']} News")
-        st.caption(" · ".join(f"[{label}]({url})" for url, label in hub_links.items()))
-        st.caption(f"Headlines from the last {NEWS_LOOKBACK_DAYS} days.")
-
-        headlines = client.get_news(news_keywords, days=NEWS_LOOKBACK_DAYS) if news_keywords else []
-        if headlines:
-            with st.container(height=500):
-                for headline in headlines:
-                    st.markdown(
-                        news_card_html(headline["title"], headline["url"], headline.get("image")),
-                        unsafe_allow_html=True,
-                    )
-                    st.divider()
-        else:
-            st.write("No recent headlines.")
+# News Feed itself is rendered once, shared across both pages, by app.py
+# (the router) after this page's script finishes running -- see app.py's
+# comment on why. This page only hands off which teams are currently
+# selected (0, 1, or 2, one per panel) -- news is team-only everywhere now,
+# no player-name filtering, so there's nothing else for this page to add.
+st.session_state["news_context"] = {"team_ids": frozenset(_panel_team_ids(panel_a) + _panel_team_ids(panel_b))}

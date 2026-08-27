@@ -1,7 +1,8 @@
-# Just what scripts/backfill_roster_history.py imports -- it never touches
-# streamlit/plotly/pandas/fastapi/scikit-learn, so CI installs this instead
-# of the full requirements.txt.
+# Just what the scripts/backfill_*.py and scripts/ingest_team_news.py
+# scripts import -- they never touch streamlit/plotly/pandas/fastapi/
+# scikit-learn, so CI installs this instead of the full requirements.txt.
 requests>=2.31
 python-dotenv>=1.0
 SQLAlchemy>=2.0
 psycopg[binary]>=3.1
+feedparser>=6.0
