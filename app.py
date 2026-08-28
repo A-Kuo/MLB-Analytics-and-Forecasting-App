@@ -43,6 +43,24 @@ st.markdown(
     [data-testid="stSidebarCollapseButton"] {display: none !important;}
     [data-testid="stExpandSidebarButton"] {display: none !important;}
     [data-testid="collapsedControl"] {display: none !important;}
+
+    /* MLB color accent: red for primary buttons */
+    button[type="submit"], [data-testid="stBaseButton-primary"] {
+        background-color: #BD3039 !important;
+        border-color: #BD3039 !important;
+    }
+    button[type="submit"]:hover, [data-testid="stBaseButton-primary"]:hover {
+        background-color: #9a2530 !important;
+        border-color: #9a2530 !important;
+    }
+
+    /* MLB blue for links and secondary elements */
+    a {
+        color: #002D72 !important;
+    }
+    a:hover {
+        color: #003fa5 !important;
+    }
     </style>""",
     unsafe_allow_html=True,
 )
