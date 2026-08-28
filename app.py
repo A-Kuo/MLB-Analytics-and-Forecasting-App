@@ -55,8 +55,12 @@ pg = st.navigation(
 )
 pg.run()
 
+MLB_LOGO_URL = "https://www.mlbstatic.com/team-logos/league-on-light/1.svg"
+
 with st.sidebar:
-    show_news = st.toggle("News Feed", value=False, key="news_feed_toggle")
+    logo_col, title_col = st.columns([1, 4])
+    logo_col.image(MLB_LOGO_URL, width=32)
+    show_news = title_col.toggle("News Feed", value=False, key="news_feed_toggle")
     if show_news:
         st.subheader("News")
         # Alphabetical by name, matching pages/insights.py's own
@@ -65,10 +69,13 @@ with st.sidebar:
         selected_team_ids = st.session_state.get("news_context", {}).get("team_ids", ())
         team_ids = sorted(selected_team_ids, key=lambda tid: TEAM_BY_ID[tid]["name"])[:MAX_NEWS_TEAMS]
 
-        hub_links = {GENERAL_NEWS_HUB_URL: "MLB.com News"}
-        for team_id in team_ids:
-            hub_links.setdefault(team_news_hub_url(team_id), f"{TEAM_BY_ID[team_id]['name']} News")
-        st.caption(" · ".join(f"[{label}]({url})" for url, label in hub_links.items()))
+        # Team hub links first, general MLB.com hub last -- one link per
+        # line rather than a joined caption, so each is its own tappable
+        # target instead of a run-on row of small links.
+        hub_links = {team_news_hub_url(team_id): f"{TEAM_BY_ID[team_id]['name']} News" for team_id in team_ids}
+        hub_links.setdefault(GENERAL_NEWS_HUB_URL, "MLB News")
+        for url, label in hub_links.items():
+            st.caption(f"[{label}]({url})")
         st.caption(f"Headlines from the last {NEWS_LOOKBACK_DAYS} days.")
 
         headlines = client.get_team_news(tuple(team_ids), days=NEWS_LOOKBACK_DAYS) if team_ids else []

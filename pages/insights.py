@@ -102,9 +102,8 @@ st.session_state["news_context"] = {"team_ids": selected_team_ids}
 
 st.subheader("Season")
 current_year = datetime.datetime.now().year
-season = st.number_input(
-    "Season", min_value=EARLIEST_SEASON, max_value=current_year, value=current_year - 1, step=1
-)
+season_options = list(range(current_year, EARLIEST_SEASON - 1, -1))
+season = st.selectbox("Season", season_options, index=season_options.index(current_year - 1))
 
 st.divider()
 st.subheader("Leaderboards")
