@@ -28,9 +28,7 @@ whether that's one player, a manual handful, or an entire bulk-selected
 group. Since hitting and pitching metrics can't be meaningfully combined,
 those three sections show one stat group at a time -- whichever type has
 more players in the current selection (utils.player_selection.group_for_selection).
-Each of the three also carries its own collapsible Game Log at the bottom
-(single-player only) rather than there being one standalone Game Log
-section.
+A single collapsible Game Log appears at the bottom (single-player only).
 
 Team Trends (the old per-game rolling trajectory section) is commented out
 below rather than deleted -- it was built for a single team and needs a
@@ -231,11 +229,8 @@ def render_dashboard_panel(
         st.info("Press Calculate to compute aggregate KPIs for the current selection.")
     else:
         kpi_defs = metrics_for_group(selected_group)
-        kpi_cols = st.columns(len(kpi_defs))
-        for col, (key, acronym) in zip(kpi_cols, kpi_defs):
-            col.metric(f"{full_name_for_metric(key)} ({acronym})", format_stat(kpi_values.get(key), key))
-
-    _render_game_log_expander(key_prefix, "kpi", selected_ids, bio_by_id, perf_end)
+        for key, acronym in kpi_defs:
+            st.metric(f"{full_name_for_metric(key)} ({acronym})", format_stat(kpi_values.get(key), key))
 
     st.subheader("Performance Trend")
     # Subject key deliberately mirrors Forecast's below (team + selected players
@@ -305,8 +300,6 @@ def render_dashboard_panel(
                     build_multi_metric_figure(trend_populated, trend_acronym_by_metric, None, trend_title),
                     key=k(key_prefix, "trend_chart_final"),
                 )
-
-    _render_game_log_expander(key_prefix, "trend", selected_ids, bio_by_id, perf_end)
 
     st.subheader("Forecast")
     st.caption(
