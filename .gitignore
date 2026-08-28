@@ -5,7 +5,7 @@ venv/
 .env
 .ipynb_checkpoints/
 # Only the secrets file -- a .streamlit/config.toml (theming) should be committed.
-.streamlit/secrets.toml
+# .streamlit/secrets.toml
 
 # Generator/validator tooling stays local-only; the .ipynb files themselves
 # are the tracked artifact. Glob (not the three literal filenames this used
