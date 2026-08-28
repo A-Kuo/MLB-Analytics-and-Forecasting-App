@@ -122,7 +122,7 @@ def render_dashboard_panel(
     default_team_name: str | None,
     narrow: bool = False,
 ) -> PanelSelection:
-    """Renders one full Team -> Season -> Timeline -> Player -> Aggregate
+    """Renders one full Team -> Timeline -> Player -> Aggregate
     KPI -> Performance Trend -> Forecast -> Game Log dashboard panel.
 
     ``default_team_name`` set to a real name eagerly selects that team
@@ -163,6 +163,13 @@ def render_dashboard_panel(
     perf_start, perf_end = year_range_control(
         k(key_prefix, "perf"), EARLIEST_SEASON, current_season, label="Season range"
     )
+
+    # A player selection made under a different Timeline range is stale --
+    # positions/candidates below are recomputed against the new range, so
+    # any previously checked ids need to clear along with them.
+    if st.session_state.get(k(key_prefix, "perf_timeline_range")) != (perf_start, perf_end):
+        st.session_state[k(key_prefix, "perf_timeline_range")] = (perf_start, perf_end)
+        st.session_state[k(key_prefix, "perf_selected_ids")] = set()
 
     st.subheader("Player")
     bio_roster = client.get_team_roster_with_active_years(team["id"])
@@ -312,9 +319,15 @@ def render_dashboard_panel(
     mirror_end_col.number_input(
         "Scrubber 2 (train end)", value=perf_end, disabled=True, key=k(key_prefix, "forecast_mirror_end")
     )
+
+    # Forecast's own training-end value, forced to always equal Timeline's
+    # scrubber 2 exactly -- the two number_inputs above were display-only
+    # mirrors and never actually fed the forecast call below.
+    forecast_train_end = perf_end
+
     forecast_end = pushed_year_control(
         k(key_prefix, "forecast"),
-        perf_end,
+        forecast_train_end,
         forecast_max_year(),
         slider_floor_year=EARLIEST_SEASON,
         label="Scrubber 3 (forecast horizon)",
@@ -353,7 +366,7 @@ def render_dashboard_panel(
         # ever does that work; every other case inside the shared state machine
         # just filters or clears the last computed result.
         forecast_effective_press = (
-            forecast_pressed and bool(selected_ids) and forecast_end > perf_end and bool(forecast_selected_metrics)
+            forecast_pressed and bool(selected_ids) and forecast_end > forecast_train_end and bool(forecast_selected_metrics)
         )
         forecast_display_metrics = metric_button_state_machine(
             forecast_effective_press,
@@ -361,7 +374,7 @@ def render_dashboard_panel(
             k(key_prefix, "forecast_computed"),
             k(key_prefix, "forecast_acronyms"),
             lambda key: client.get_aggregate_forecast(
-                selected_tuple, key, selected_group, perf_start, perf_end, forecast_end
+                selected_tuple, key, selected_group, perf_start, forecast_train_end, forecast_end
             ),
             spinner_message="Fitting forecast...",
         )
@@ -371,7 +384,7 @@ def render_dashboard_panel(
 
         if not selected_ids:
             st.info("Select one or more players, then press Forecast.")
-        elif forecast_end <= perf_end:
+        elif forecast_end <= forecast_train_end:
             # Scrubber 3 at or before scrubber 2 -- a zero-or-negative-width
             # forecast window. Not just ==: forecast_end is clamped to
             # forecast_max_year(), so it can end up *before* perf_end

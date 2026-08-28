@@ -92,8 +92,6 @@ pg = st.navigation(
 )
 pg.run()
 
-MLB_LOGO_URL = "https://www.mlbstatic.com/team-logos/league-on-light/1.svg"
-
 with st.sidebar:
     logo_col, title_col = st.columns([1, 4])
     logo_col.image(MLB_LOGO_URL, width=32)
@@ -103,11 +101,19 @@ with st.sidebar:
 
         # Get selected teams
         selected_team_ids = st.session_state.get("news_context", {}).get("team_ids", ())
-        team_ids = sorted(selected_team_ids, key=lambda tid: TEAM_BY_ID[tid]["name"])[:MAX_NEWS_TEAMS]
+        team_ids = tuple(sorted(selected_team_ids, key=lambda tid: TEAM_BY_ID[tid]["name"])[:MAX_NEWS_TEAMS])
+
+        # Only refetch when the team set actually changes -- prevents the
+        # panel from greying out on every unrelated checkbox/button rerun.
+        if st.session_state.get("news_last_team_ids") != team_ids:
+            st.session_state["news_last_team_ids"] = team_ids
+            st.session_state["news_headlines"] = (
+                client.get_team_news(team_ids, days=NEWS_LOOKBACK_DAYS) if team_ids else []
+            )
 
         # HEADLINES SECTION (above links)
         st.caption(f"Headlines from the last {NEWS_LOOKBACK_DAYS} days.")
-        headlines = client.get_team_news(tuple(team_ids), days=NEWS_LOOKBACK_DAYS) if team_ids else []
+        headlines = st.session_state.get("news_headlines", [])
         if headlines:
             with st.container(height=500):
                 for headline in headlines:
