@@ -34,13 +34,17 @@ def news_card_html(title: str, url: str, image: str | None) -> str:
         if _is_safe_url(image)
         else ""
     )
-    # Entire card (thumbnail + headline) is clickable
+    # Entire card (thumbnail + headline) is clickable. Hover feedback comes
+    # from the "mlb-news-card" class + a global :hover rule (app.py) rather
+    # than inline onmouseover/onmouseout handlers -- those require careful
+    # attribute-spacing that's easy to get wrong (a missing space between
+    # adjacent attributes silently breaks Streamlit's HTML-block parsing,
+    # which then renders the whole tag as literal escaped text instead of
+    # a link) and some sanitizers strip inline event-handler attributes
+    # outright.
     return (
-        f'<a href="{href}" target="_blank" rel="noopener noreferrer" '
-        'style="display:block;text-decoration:none;color:inherit;padding:8px;border-radius:4px;'
-        'transition:background-color 0.2s;cursor:pointer;"'
-        'onmouseover="this.style.backgroundColor=\'rgba(0, 45, 114, 0.1)\';" '
-        'onmouseout="this.style.backgroundColor=\'transparent\';">'
+        f'<a href="{href}" target="_blank" rel="noopener noreferrer" class="mlb-news-card" '
+        'style="display:block;text-decoration:none;color:inherit;padding:8px;border-radius:4px;">'
         f"{image_html}"
         f'<div style="font-size:0.85rem;font-weight:500;line-height:1.3;">{safe_title}</div>'
         "</a>"

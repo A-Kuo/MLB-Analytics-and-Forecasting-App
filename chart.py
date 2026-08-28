@@ -79,7 +79,7 @@ def build_multi_metric_figure(
         xaxis_title="Season",
         xaxis={"dtick": 1},
         yaxis_title="Rate" if has_rate else "Total",
-        template="plotly_white",
+        template="plotly_dark",
         hovermode="x unified",
         margin={"t": 56, "b": 40, "l": 48, "r": 48},
     )
@@ -156,7 +156,7 @@ def build_forecast_figure(
         xaxis_title="Season",
         xaxis={"dtick": 1},
         yaxis_title="Rate" if has_rate else "Total",
-        template="plotly_white",
+        template="plotly_dark",
         hovermode="x unified",
         margin={"t": 56, "b": 40, "l": 48, "r": 48},
     )
@@ -228,7 +228,7 @@ def build_trajectory_figure(payload: dict, series_color: str) -> go.Figure:
         title=f"{metric_label} Trajectory{subtitle}",
         xaxis_title=payload["x_title"],
         yaxis_title=metric_label,
-        template="plotly_white",
+        template="plotly_dark",
         hovermode="x unified",
         margin={"t": 56, "b": 40, "l": 48, "r": 24},
     )

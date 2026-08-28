@@ -44,7 +44,7 @@ st.set_page_config(
 # deployed Streamlit version differs from what's installed locally.
 st.markdown(
     """<style>
-    section[data-testid="stSidebar"] {width: 210px !important; background-color: #f8f8f8 !important;}
+    section[data-testid="stSidebar"] {width: 210px !important; background-color: #2d2d2d !important;}
     [data-testid="stSidebarCollapseButton"] {display: none !important;}
     [data-testid="stExpandSidebarButton"] {display: none !important;}
     [data-testid="collapsedControl"] {display: none !important;}
@@ -59,12 +59,20 @@ st.markdown(
         border-color: #9a2530 !important;
     }
 
-    /* MLB blue for links and secondary elements */
+    /* Links: light grey by default (readable on charcoal), MLB blue as a
+       hover highlight -- resting-state #002D72 (MLB navy) is unreadable
+       against a dark background. */
     a {
-        color: #002D72 !important;
+        color: #e0e0e0 !important;
     }
     a:hover {
-        color: #003fa5 !important;
+        color: #6699cc !important;
+    }
+
+    /* News card hover feedback (utils/news_cards.py) -- a CSS class rather
+       than inline onmouseover/onmouseout, see that file's comment. */
+    a.mlb-news-card:hover {
+        background-color: rgba(102, 153, 204, 0.15) !important;
     }
     </style>""",
     unsafe_allow_html=True,
