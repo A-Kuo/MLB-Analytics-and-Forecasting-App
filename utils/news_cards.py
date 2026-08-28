@@ -30,14 +30,18 @@ def news_card_html(title: str, url: str, image: str | None) -> str:
     href = html.escape(url) if _is_safe_url(url) else "#"
     image_html = (
         f'<img src="{html.escape(image)}" '
-        'style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:6px;">'
+        'style="width:100%;max-height:120px;object-fit:cover;border-radius:4px;margin-bottom:8px;">'
         if _is_safe_url(image)
         else ""
     )
+    # Entire card (thumbnail + headline) is clickable
     return (
         f'<a href="{href}" target="_blank" rel="noopener noreferrer" '
-        'style="display:block;text-decoration:none;color:inherit;">'
+        'style="display:block;text-decoration:none;color:inherit;padding:8px;border-radius:4px;'
+        'transition:background-color 0.2s;cursor:pointer;"'
+        'onmouseover="this.style.backgroundColor=\'rgba(0, 45, 114, 0.1)\';" '
+        'onmouseout="this.style.backgroundColor=\'transparent\';">'
         f"{image_html}"
-        f'<div style="font-size:0.85rem;font-weight:500;">{safe_title}</div>'
+        f'<div style="font-size:0.85rem;font-weight:500;line-height:1.3;">{safe_title}</div>'
         "</a>"
     )

@@ -52,8 +52,11 @@ for row_start in range(0, len(ordered_teams), TEAMS_PER_ROW):
     for col, team in zip(cols, row_teams):
         team_key = f"insights_team_cb_{team['id']}"
         st.session_state[team_key] = team["id"] in selected
-        col.checkbox(
-            team["abbreviation"],
+        # Display logo + team name, not just acronym
+        logo_col, checkbox_col = col.columns([1, 4])
+        logo_col.image(team["logo_url"], width=24)
+        checkbox_col.checkbox(
+            team["name"],
             key=team_key,
             on_change=sync_bulk_checkbox,
             args=(team_key, ids_key, frozenset({team["id"]})),
@@ -61,12 +64,16 @@ for row_start in range(0, len(ordered_teams), TEAMS_PER_ROW):
 
 # 2. Scrollable flag window -- a real, distinct colored badge per selected
 # team (unlike the player selector's multiselect-only pills), reusing
-# team["primary_color"].
+# team["primary_color"], now with logos.
 current = st.session_state[ids_key]
 st.caption("Selected Teams")
 with st.container(height=140, border=True):
-    cards = [team_flag_html(team_by_id[tid]) for tid in sorted(current, key=lambda tid: team_by_id[tid]["name"])]
-    st.markdown(team_flag_wall_html(cards), unsafe_allow_html=True)
+    # Display logos + flags side by side
+    for tid in sorted(current, key=lambda tid: team_by_id[tid]["name"]):
+        team = team_by_id[tid]
+        logo_col, flag_col = st.columns([1, 6])
+        logo_col.image(team["logo_url"], width=32)
+        flag_col.markdown(team_flag_html(team), unsafe_allow_html=True)
 
 # 3. Bulk-select: an "All Teams" master checkbox, then American/National
 # League rows each paired with East/Central/West division checkboxes.

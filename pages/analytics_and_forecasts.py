@@ -137,6 +137,7 @@ def render_dashboard_panel(
     """
     st.subheader("Team")
     team_logo_col, team_select_col = st.columns([1, 8])
+    # Create options with team names and abbreviations for the dropdown
     team_options = sorted(team_by_name)
     team_index = team_options.index(default_team_name) if default_team_name is not None else None
     team_name = team_select_col.selectbox(
@@ -153,9 +154,7 @@ def render_dashboard_panel(
         return PanelSelection(team=None)
 
     team = team_by_name[team_name]
-    # st.selectbox renders plain text per option -- Streamlit's native widget
-    # has no way to embed an image inside the dropdown list itself, so the
-    # selected team's logo is shown here instead, next to the selector.
+    # Display the selected team's logo next to the dropdown
     team_logo_col.image(team["logo_url"], width=56)
 
     current_season = pd.Timestamp.today().year

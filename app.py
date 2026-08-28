@@ -28,7 +28,12 @@ from macroservice.teams import GENERAL_NEWS_HUB_URL, TEAM_BY_ID, team_news_hub_u
 from utils.constants import MAX_NEWS_TEAMS, NEWS_LOOKBACK_DAYS
 from utils.news_cards import news_card_html
 
-st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Baseball Analytics Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    page_icon="⚾"
+)
 
 # The sidebar only ever needs to hold two nav links plus a compact News
 # Feed now, so it's pinned open (no collapse control -- see the two
@@ -39,7 +44,7 @@ st.set_page_config(page_title="Baseball Analytics Dashboard", layout="wide", ini
 # deployed Streamlit version differs from what's installed locally.
 st.markdown(
     """<style>
-    section[data-testid="stSidebar"] {width: 210px !important;}
+    section[data-testid="stSidebar"] {width: 210px !important; background-color: #f8f8f8 !important;}
     [data-testid="stSidebarCollapseButton"] {display: none !important;}
     [data-testid="stExpandSidebarButton"] {display: none !important;}
     [data-testid="collapsedControl"] {display: none !important;}
@@ -65,10 +70,16 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# MLB logo in top-left, above navigation
+MLB_LOGO_URL = "https://www.mlbstatic.com/team-logos/league-on-light/1.svg"
+col1, col2 = st.columns([1, 10])
+col1.image(MLB_LOGO_URL, width=48)
+col2.title("MLB Analytics Dashboard")
+
 pg = st.navigation(
     [
-        st.Page("pages/analytics_and_forecasts.py", title="Analytics and Forecasts", default=True),
-        st.Page("pages/insights.py", title="Insights"),
+        st.Page("pages/insights.py", title="Insights", default=True),
+        st.Page("pages/analytics_and_forecasts.py", title="Analytics and Forecasts"),
     ]
 )
 pg.run()
@@ -81,24 +92,16 @@ with st.sidebar:
     show_news = title_col.toggle("News Feed", value=False, key="news_feed_toggle")
     if show_news:
         st.subheader("News")
-        # Alphabetical by name, matching pages/insights.py's own
-        # convention -- the cap bounds worst-case query size when
-        # Insights' default (all 30 teams) is still selected.
+
+        # Get selected teams
         selected_team_ids = st.session_state.get("news_context", {}).get("team_ids", ())
         team_ids = sorted(selected_team_ids, key=lambda tid: TEAM_BY_ID[tid]["name"])[:MAX_NEWS_TEAMS]
 
-        # Team hub links first, general MLB.com hub last -- one link per
-        # line rather than a joined caption, so each is its own tappable
-        # target instead of a run-on row of small links.
-        hub_links = {team_news_hub_url(team_id): f"{TEAM_BY_ID[team_id]['name']} News" for team_id in team_ids}
-        hub_links.setdefault(GENERAL_NEWS_HUB_URL, "MLB News")
-        for url, label in hub_links.items():
-            st.caption(f"[{label}]({url})")
+        # HEADLINES SECTION (above links)
         st.caption(f"Headlines from the last {NEWS_LOOKBACK_DAYS} days.")
-
         headlines = client.get_team_news(tuple(team_ids), days=NEWS_LOOKBACK_DAYS) if team_ids else []
         if headlines:
-            with st.container(height=320):
+            with st.container(height=500):
                 for headline in headlines:
                     st.markdown(
                         news_card_html(headline["headline"], headline["link"], headline.get("thumbnail")),
@@ -112,3 +115,14 @@ with st.sidebar:
                 "No cached news for the selected teams yet. Run "
                 "`python scripts/ingest_team_news.py`, or wait for the next scheduled run."
             )
+
+        # NEWS HUBS SECTION (below headlines)
+        st.divider()
+        st.caption("News Hubs")
+        # Team hub links first, general MLB.com hub last
+        hub_links = {team_news_hub_url(team_id): f"{TEAM_BY_ID[team_id]['name']} News" for team_id in team_ids}
+        hub_links.setdefault(GENERAL_NEWS_HUB_URL, "MLB News")
+
+        with st.container(height=150):
+            for url, label in hub_links.items():
+                st.markdown(f"[{label}]({url})")
