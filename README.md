@@ -1,6 +1,9 @@
 # ⚾ Baseball Analytics Dashboard
 
-> A live-updating, player-centric baseball analytics dashboard built with Streamlit, a probabilistic scikit-learn regression ensemble, and a real-time sports news feed.
+> A live-updating, player-centric baseball analytics dashboard built, data pipeline engineering, probabilistic regression ensemble (and a real-time sports news feed).
+
+
+Nearing pre-production, so expect small parts of the macro-service architecture to break.
 
 ---
 
