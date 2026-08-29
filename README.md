@@ -207,9 +207,11 @@ The same credential is consumed in two different shapes, which is easy to get wr
   url = "postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require"
   ```
 
-- **The backfill script** (and the GitHub Actions `DATABASE_URL` repo secret) wants a bare connection string, not TOML.
+- **The backfill script** (and the GitHub Actions `DATABASE_URL` repo secret) wants a bare connection string, not TOML. 
 
-Most providers hand out a `postgresql://` URL, which SQLAlchemy maps to psycopg2 — not installed here. `normalize_database_url()` rewrites that to `postgresql+psycopg://` automatically and also accepts the TOML block, so either form works in either place.
+Most providers hand out a `postgresql://` URL, which SQLAlchemy maps to psycopg2, but `normalize_database_url()` rewrites that to `postgresql+psycopg://` automatically and also accepts the TOML block, so either form works in either place.
+
+Backfill is currently buggiest part of this app, just ahead of model training breakages. This is a work in progress that is nearing completion.
 
 Seed the cache (idempotent; creates tables on first run):
 
@@ -244,6 +246,4 @@ psycopg[binary]>=3.1
 
 - The MLB Stats API is fully public and does not require authentication for read access
 - Baseball Savant's CSV search endpoint is unofficial/undocumented; treat it as best-effort and always behind a graceful fallback (see the Statcast reliability note above)
-- Live game data typically posts within 5–10 minutes of completion
-- Team logos are served directly from MLB's CDN; no static assets needed
-- The news feed keyword filter uses simple substring matching on headline text
+- Live game data should ideally post within 5–10 minutes of completion. Currently undergoing final integrations, so **database might experience breakages and backfill errors.**
