@@ -71,7 +71,7 @@ TEAM_NEWS_HUB_SLUGS: dict[int, str] = {
 }
 
 # The founding / debut season for each franchise in the modern MLB era (or AL/NL entry).
-# Used to filter out expansion teams when backfilling historical seasons prior to their founding.
+# Used to filter out expansion teams when backfilling historical seasons prior to their founding before addressing historical names.
 FRANCHISE_ESTABLISHED_YEAR: dict[int, int] = {
     108: 1961,  # Los Angeles Angels
     109: 1998,  # Arizona Diamondbacks
