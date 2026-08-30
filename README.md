@@ -6,18 +6,9 @@ A full-stack MLB analytics platform that ingests public sports data into a Postg
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)](#)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-ETL_automation-2088FF?logo=githubactions&logoColor=white)](#)
 [![Tests](https://img.shields.io/badge/tests-pytest-success)](#)
----
-## Project Overview ⚾
-
-Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
-
-My data-engineering layer uses cache-aware ingestion and scheduled workflow pipelines to load public messy, semi-structured MLB, Statcast, and RSS data into a Neon PostgreSQL analytics data mart. It applies idempotent upserts, retry/backoff controls, and dataset-specific freshness policies so that historical data can be retrieved reliably without repeatedly calling upstream sources.
-
-My analytics layer uses this curated datastore to compute and explain KPIs, rate- and count-stat aggregations, season leaderboards, historical time series, rolling sabermetrics, team/player cohorts, and interactive visualizations. Counting statistics are aggregated by summation, while rate statistics are aggregated by mean so multi-player comparisons remain statistically interpretable. You can check it out on the streamlit link. Note that the streamlit is a prototype dashboard with all frontend being ported to Vercel, so elements of the macro-service communicating with the datastore may break.
-
-The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors—including Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, HistGradientBoosting, and ensemble baselines—are evaluated with chronological train/validation splits and walk-forward cross-validation. Performance is reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
 
 ---
+
 ## Contents:
 
 [Project Guide](#project-repository-guide)
@@ -33,6 +24,19 @@ The machine-learning layer treats player performance as an ordered time-series r
 [References](#references-and-acknowledgments)
 
 ---
+
+## Project Overview ⚾
+
+Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
+
+My data-engineering layer uses cache-aware ingestion and scheduled workflow pipelines to load public messy, semi-structured MLB, Statcast, and RSS data into a Neon PostgreSQL analytics data mart. It applies idempotent upserts, retry/backoff controls, and dataset-specific freshness policies so that historical data can be retrieved reliably without repeatedly calling upstream sources.
+
+My analytics layer uses this curated datastore to compute and explain KPIs, rate- and count-stat aggregations, season leaderboards, historical time series, rolling sabermetrics, team/player cohorts, and interactive visualizations. Counting statistics are aggregated by summation, while rate statistics are aggregated by mean so multi-player comparisons remain statistically interpretable. You can check it out on the streamlit link. Note that the streamlit is a prototype dashboard with all frontend being ported to Vercel, so elements of the macro-service communicating with the datastore may break.
+
+The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors—including Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, HistGradientBoosting, and ensemble baselines—are evaluated with chronological train/validation splits and walk-forward cross-validation. Performance is reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
+
+---
+
 ## Project Repository Guide
 
 
