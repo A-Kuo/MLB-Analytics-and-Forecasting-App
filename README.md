@@ -11,7 +11,7 @@ A full-stack MLB analytics platform that ingests public sports data into a Postg
 
 ## Contents:
 
-[Project Guide](#project-repository-guide)
+[Project Guide](#project-overview)
 
 [Setup and Instructions](#setup-and-instructions)
 
@@ -36,9 +36,6 @@ My analytics layer uses this curated datastore to compute and explain KPIs, rate
 The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors—including Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, HistGradientBoosting, and ensemble baselines—are evaluated with chronological train/validation splits and walk-forward cross-validation. Performance is reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
 
 ---
-
-## Project Repository Guide
-
 
 #### Worktree:
 ```text
