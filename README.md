@@ -18,8 +18,12 @@ My analytics layer uses this curated datastore to compute and explain KPIs, rate
 The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors—including Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, HistGradientBoosting, and ensemble baselines—are evaluated with chronological train/validation splits and walk-forward cross-validation. Performance is reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
 
 ---
+## Contents:
+[Math Computations](##-Analytical-and-ML-Computations)
 
-## Analytical and ML computations
+---
+
+## Analytical and ML Computations
 
 If you want to know more about the mathematics I used in the data selection, and especially in the machine learning side, see below.
 
@@ -68,7 +72,7 @@ $$
 \text{wOBA}^{*} = \frac{0.690\text{BB} + 0.722\text{HBP} + 0.888\text{(1B)} + 1.271\text{(2B)} + 1.616\text{(3B)} + 2.101\text{HR}}{\text{AB} + \text{BB} + \text{SF} + \text{HBP}}
 $$
 
-where \(BB\) is walks, \(HBP\) is hit by pitch, \(1B\), \(2B\), and \(3B\) are singles, doubles, and triples, \(HR\) is home runs, \(AB\) is at-bats, and \(SF\) is sacrifice flies.
+where $\(BB\)$ is walks, $\(HBP\)$ is hit by pitch, $\(1B\)$, $\(2B\)$, and $\(3B\)$ are singles, doubles, and triples, \(HR\) is home runs, \(AB\) is at-bats, and \(SF\) is sacrifice flies.
 
 The asterisk indicates that this is a wOBA-style weighted aggregate using fixed weights in the modeling workflow, rather than a claim that the calculation uses annually recalibrated official league wOBA weights.
 
@@ -80,13 +84,13 @@ $$
 \text{FIP} = \frac{13\text{HR} + 3(\text{BB} + \text{HBP}) - 2\text{K}}{\text{IP}} + C
 $$
 
-where \(HR\) is home runs allowed, \(BB\) is walks, \(HBP\) is hit batters, \(K\) is strikeouts, \(IP\) is innings pitched, and \(C\) is a league adjustment constant.
+where $\(HR\)$ is home runs allowed, $\(BB\)$ is walks, $\(HBP\)$ is hit batters, $\(K\)$ is strikeouts, $\(IP\)$ is innings pitched, and $\(C\)$ is a league adjustment constant.
 
 This target emphasizes outcomes that are more directly connected to pitching events than ERA alone.
 
 ### Supervised learning feature matrix
 
-For each time step \(t\), the model receives an ordered feature vector:
+For each time step $\(t\)$, the model receives an ordered feature vector:
 
 $$
 X_t =
