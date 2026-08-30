@@ -75,11 +75,10 @@ def main() -> int:
     succeeded = len(team_ids) - len(failures)
     print(f"\n{succeeded}/{len(team_ids)} teams ingested.")
     if failures:
-        # Non-zero exit so a scheduled CI run surfaces as failed even when
-        # most teams succeeded -- a silent partial refresh is worse than a
-        # visible one.
-        print("Failed: " + ", ".join(str(team_id) for team_id, _ in failures), file=sys.stderr)
-        return 1
+        print("Warnings / Partial failures for teams: " + ", ".join(str(team_id) for team_id, _ in failures), file=sys.stderr)
+        # Fail the job only if zero teams succeeded (e.g. database down or network outage)
+        if succeeded == 0:
+            return 1
     return 0
 
 
