@@ -1,252 +1,239 @@
-# ⚾ Baseball Analytics Dashboard
+> A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
 
-> A live-updating, player-centric baseball analytics dashboard built, data pipeline engineering, probabilistic regression ensemble (and a real-time sports news feed).
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](#)
+[![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)](#)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)](#)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-ETL_automation-2088FF?logo=githubactions&logoColor=white)](#)
+[![Tests](https://img.shields.io/badge/tests-pytest-success)](#)
 
 
-Nearing pre-production, so expect small parts of the macro-service architecture to break.
+## This Project
 
----
+Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
 
-## Project Overview
+My data-engineering layer uses cache-aware ingestion and scheduled workflow pipelines to load public messy, semi-structured MLB, Statcast, and RSS data into a Neon PostgreSQL analytics data mart. It applies idempotent upserts, retry/backoff controls, and dataset-specific freshness policies so that historical data can be retrieved reliably without repeatedly calling upstream sources.
 
-This is a webapp that ingests live and historical MLB data from the **MLB Stats API** (no key required) and pitch-by-pitch/batted-ball data from **Baseball Savant (Statcast)** to model a player's performance trajectory across a season. A blended ensemble (SVR + Huber + Gaussian Process regressors) fits a trend line with a 95% confidence band, validated on a chronological holdout rather than fit blindly to all available data.
+My analytics layer uses this curated datastore to compute and explain KPIs, rate- and count-stat aggregations, season leaderboards, historical time series, rolling sabermetrics, team/player cohorts, and interactive visualizations. Counting statistics are aggregated by summation, while rate statistics are aggregated by mean so multi-player comparisons remain statistically interpretable. You can check it out on the streamlit link. Note that the streamlit is a prototype dashboard with all frontend being ported to Vercel, so elements of the macro-service communicating with the datastore may break.
 
----
-
-## Scope
-
-**Team → season → individual player** is the primary flow: KPI cards, a regression-overlaid trend chart, and a per-game log for one selected player. A **Team Trends** section shows 10-game rolling runs scored/allowed for the selected team as a whole. Individual pitchers get pitching (defense) metrics and individual hitters get batting (offense) metrics automatically, based on roster position.
-
----
-
-## Mandatory Criteria
-
-- **Live data fetching**: Player game logs refresh in near-real-time via the MLB Stats API upon game post
-- **Team logo rendering**: Team selector includes official MLB team logos fetched from the MLB CDN
-- **Regression overlay with uncertainty**: Dotted ensemble trend line + shaded 95% CI band, validated on a chronological 80/20 holdout, on every trajectory chart
-- **Team news feed**: Toggleable headlines for the selected team(s) (MLB.com + SB Nation), pre-ingested into Postgres on a 6-hour schedule rather than fetched live per request
-- **Individual player drill-down**: Team + season selection narrows to a roster; selecting a player renders their own KPIs, trend chart, and game log
-- **Team-level rolling aggregates**: 10-game rolling runs scored (offense) and runs allowed (defense) for the selected team
+The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors—including Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, HistGradientBoosting, and ensemble baselines—are evaluated with chronological train/validation splits and walk-forward cross-validation. Performance is reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
 
 ---
 
-## Kaggle Test Environment
+## Analytical and ML computations
 
-Check out all the math testing that went behind this app:
+If you want to know more about the mathematics I used in the data selection, and especially in the machine learning side, see below.
 
-https://www.kaggle.com/code/augustinekuo/mlb-analytics-predictive-eda-and-regression/
+### Metric-aware cohort aggregation
 
----
+For a selected player cohort, cumulative counting statistics are summed across players:
 
-## Architecture
+$$
+C_{\text{cohort}} = \sum_{p=1}^{P} C_p
+$$
 
-One deployable Streamlit app backed by an in-process `macroservice/` package: the dashboard calls the package's functions directly (no network hop), and the package can also be run standalone as a FastAPI app if something other than this dashboard ever needs the same data.
+where $\(C_p\)$ is a counting statistic for player \(p\), such as home runs, RBIs, strikeouts, innings pitched, or earned runs. Rate statistics are aggregated as a mean across the selected players:
 
-```
-Full MLB Analytics Dashboard/
-│
-├── app.py                    # Streamlit entry point — thin router (st.navigation) over pages/
-├── client.py                 # Streamlit-facing facade over macroservice/, with @st.cache_data
-├── chart.py                  # Pure Plotly rendering of a pre-fit trajectory payload
-├── requirements.txt
-├── requirements-dev.txt      # + pytest, httpx (for FastAPI TestClient)
-├── README.md
-│
-├── macroservice/
-│   ├── api.py                 # FastAPI app — thin facade, one route per domain function
-│   ├── caching.py             # TTL-based in-memory caching decorator
-│   ├── backoff.py             # Exponential backoff (full-jitter) for upstream API calls
-│   ├── teams.py                # Team config/lookup + roster + schedule (MLB Stats API)
-│   ├── players.py               # Player game log + season stats (MLB Stats API)
-│   ├── statcast.py               # Pitch-level and batted-ball data (Baseball Savant CSV)
-│   ├── news.py                    # NewsAPI (if keyed) or public RSS fallback
-│   ├── trajectories.py             # Orchestrates features + regression into a trajectory payload
-│   ├── features.py                  # Feature engineering: rolling windows, momentum, CSW/whiff
-│   ├── regression.py                 # SVR + Huber + GaussianProcess ensemble, chronological holdout
-│   ├── transform.py                   # Raw API JSON → typed DataFrames
-│   └── config/
-│       └── teams.json                  # Team metadata: IDs, names, colors, logo URLs, news keywords
-│
-├── utils/
-│   ├── filters.py             # Hitter/pitcher metric-set logic (UI labels + columns)
-│   └── formatters.py          # Stat formatting helpers (.287, 3.45, etc.)
-│
-└── tests/
-    ├── test_api.py
-    ├── test_backoff.py
-    ├── test_caching.py
-    ├── test_chart.py
-    ├── test_features.py
-    ├── test_formatters.py
-    ├── test_regression.py
-    ├── test_teams.py
-    └── test_trajectories.py
-```
+$$
+R_{\text{cohort}} = \frac{1}{P}\sum_{p=1}^{P} R_p
+$$
 
----
+where $\(R_p\)$ may be batting average, on-base percentage, OPS, ERA, WHIP, xBA, hard-hit percentage, CSW percentage, or whiff percentage. This avoids treating rate statistics as additive quantities.
 
-## Data Sources
+### Rolling performance targets
 
-| Source | Use | Auth |
-|---|---|---|
-| [MLB Stats API](https://statsapi.mlb.com/api/) | Rosters, player game logs, season stats, team schedule/linescore | None (public) |
-| [Baseball Savant](https://baseballsavant.mlb.com/statcast_search) (Statcast CSV export) | Pitch-level CSW%, exit velocity, xBA, hard-hit%, spin rate | None, but **undocumented/unofficial** — see note below |
-| MLB CDN (`mlbstatic.com/team-logos`) | Team logos | None (public) |
-| [NewsAPI](https://newsapi.org/) or MLB.com news RSS | Sports headlines | Free-tier API key optional — RSS fallback needs none |
+The forecasting workflow converts ordered game or appearance observations into rolling performance targets. For a target metric $\(y_t\)$ and a trailing window of $\(w\)$ observations:
 
-**Live game polling**: game logs are cached with a 60-second TTL; Statcast pulls are cached for 1 hour (`macroservice/caching.py`), so newly posted games surface on the next rerun without hammering either API.
+$$
+\bar{y}_{t}^{(w)} = \frac{1}{w}\sum_{i=t-w+1}^{t} y_i
+$$
 
-> **Statcast reliability note**: Baseball Savant has no documented, stable public API — `macroservice/statcast.py` hits its CSV search endpoint directly. This is confirmed working as of this writing, but it can change or rate-limit without notice. Every caller treats a failed/empty Statcast response as a legitimate "unavailable" case and falls back to MLB Stats API metrics rather than erroring — see [Regression & Trajectory Engines](#regression--trajectory-engines).
+This smoothing reduces game-to-game variance and creates a time-dependent target that can represent recent hitter or pitcher performance.
 
----
+### Momentum features
 
-## Dashboard Layout
+Recent momentum is computed as another short rolling transformation of the target:
 
-### Sidebar
-- **Team selector** — dropdown with team logo thumbnail + full name
-- **Season selector** — year picker (default: current season)
-- **Player selector** — roster for the selected team/season
-- **News feed toggle** — on/off switch
+$$
+m_t^{(k)} = 
+\frac{1}{k}\sum_{i=t-k+1}^{t}\bar{y}_{i}^{(w)}
+$$
 
-### Main page
-- **KPI cards**: AVG · OBP · SLG · OPS · HR · RBI · K · BB (hitters) or ERA · WHIP · K · BB · IP · ER (pitchers), from MLB Stats API season stats
-- **Performance Trend chart**:
-  - Hitters — rolling (10-appearance) AVG/OBP/SLG/OPS/etc., regressed on `[appearance_num, momentum_3, is_home, rest_days, rolling_ev, rolling_xba, rolling_hard_hit]`
-  - Pitchers — rolling (25-pitch) CSW% from pitch-by-pitch Statcast, regressed on `[pitch_index, momentum_csw_5, rolling_whiff, rolling_velo, rolling_spin]`; falls back to an appearance-level ERA/WHIP/etc. metric (same ensemble) if Statcast is unavailable for that pitcher/season
-  - Every chart: solid markers = training points, diamond markers = holdout points, dotted line = blended ensemble trend, shaded band = 95% CI, vertical dashed line = train/holdout cutoff, title shows holdout R²/RMSE
-- **Game Log** (expandable): per-game box score — Hitters: Date · Opponent · AB · H · HR · RBI · BB · K · AVG. Pitchers: Date · Opponent · IP · H · ER · K · BB · ERA
-- **Team Trends**: 10-game rolling **runs scored** (offense) and **runs allowed** (defense) for the selected team, side by side, from `/schedule?hydrate=linescore,team`, same ensemble + CI + holdout treatment
-- **News Feed** (toggleable): latest headlines (NewsAPI if `NEWS_API_KEY` is set, otherwise MLB.com's public news RSS), filtered to the selected team's name/city, cached for 5 minutes
+where $\(k\)$ is a short momentum window and $\(\bar{y}_{i}^{(w)}\)$ is the rolling performance target. This gives the model a feature representing recent direction and persistence in performance.
 
----
+### Weighted on-base average-style offense
 
-## Metrics Reference
+The analytics workflow computes a rolling weighted offensive aggregate from plate-appearance outcomes:
 
-### Batting (Offense)
-| Metric | Description |
-|---|---|
-| AVG | Batting average (H / AB) |
-| OBP | On-base percentage |
-| SLG | Slugging percentage |
-| OPS | OBP + SLG |
-| HR | Home runs |
-| RBI | Runs batted in |
-| K | Strikeouts |
-| BB | Walks |
+$$
+\text{wOBA}^{*} = \frac{0.690\text{BB} + 0.722\text{HBP} + 0.888\text{(1B)} + 1.271\text{(2B)} + 1.616\text{(3B)} + 2.101\text{HR}}{\text{AB} + \text{BB} + \text{SF} + \text{HBP}}
+$$
 
-### Pitching (Defense)
-| Metric | Description |
-|---|---|
-| CSW% | Called-Strike + Whiff rate — primary *trajectory* metric (pitch-level, 25-pitch rolling), avoids the small-sample volatility of raw game-level ERA |
-| ERA | Earned run average — season KPI card, and the trend-chart fallback when Statcast is unavailable |
-| WHIP | Walks + hits per inning pitched |
-| K | Strikeouts |
-| BB | Walks |
-| IP / ER | Innings pitched / earned runs |
+where \(BB\) is walks, \(HBP\) is hit by pitch, \(1B\), \(2B\), and \(3B\) are singles, doubles, and triples, \(HR\) is home runs, \(AB\) is at-bats, and \(SF\) is sacrifice flies.
 
----
+The asterisk indicates that this is a wOBA-style weighted aggregate using fixed weights in the modeling workflow, rather than a claim that the calculation uses annually recalibrated official league wOBA weights.
 
-## Regression & Trajectory Engines
+### Fielding Independent Pitching-oriented target
 
-```python
-# macroservice/regression.py — the blended ensemble (simplified)
-svr    = SVR(kernel="rbf").fit(X_train, y_train)          # weight 0.35
-huber  = HuberRegressor().fit(X_train, y_train)            # weight 0.35
-gpr    = GaussianProcessRegressor(RBF() + WhiteKernel())   # weight 0.30, also gives predictive std
-gpr.fit(X_train, y_train)
+For pitchers, the workflow computes a rolling FIP-oriented target:
 
-blended = 0.35 * svr.predict(X) + 0.35 * huber.predict(X) + 0.30 * gpr.predict(X)
-ci_band = 1.96 * gpr_predictive_std   # ~95% confidence band
-```
+$$
+\text{FIP} = \frac{13\text{HR} + 3(\text{BB} + \text{HBP}) - 2\text{K}}{\text{IP}} + C
+$$
 
-- **Offensive trajectory engine (hitters)**: target is rolling AVG/OPS/etc. (10-appearance window); features blend MLB Stats API game-log context (`appearance_num`, `momentum_3`, `is_home`, `rest_days`) with Statcast batted-ball quality (`rolling_ev`, `rolling_xba`, `rolling_hard_hit`). If Statcast is unavailable those three columns are neutral zeros, and the model still fits on the MLB Stats API features alone.
-- **Defensive trajectory engine (pitchers)**: target is CSW% (25-pitch rolling window) at pitch-level granularity from Baseball Savant, bounded to `[0, 1]`; features are `pitch_index`, `momentum_csw_5`, `rolling_whiff`, `rolling_velo`, `rolling_spin`. Falls back to the appearance-level ERA/WHIP/K/BB/IP/ER metric (same ensemble, single-feature) when Statcast can't be fetched.
-- **Team aggregates (offense & defense)**: target is 10-game rolling `team_total_runs` / `opp_total_runs` from the schedule+linescore endpoint, single-feature (`game_num`) ensemble.
-- **Validation**: every fit uses a chronological 80/20 train/holdout split (never a random shuffle — this is time-series data). The chart marks the cutoff with a vertical line, styles holdout points as diamonds vs. training circles, and reports holdout R²/RMSE in the chart title, not just an in-sample fit.
-- Ridge regression (`fit_regression`) is retained in `macroservice/regression.py` for the simple single-feature case and is still unit tested.
-- Every trajectory function is memoized (`macroservice/caching.py`, 5-minute TTL): a Streamlit rerun triggered by an unrelated widget reuses the last fit instead of re-running scikit-learn.
+where \(HR\) is home runs allowed, \(BB\) is walks, \(HBP\) is hit batters, \(K\) is strikeouts, \(IP\) is innings pitched, and \(C\) is a league adjustment constant.
 
-> **Note on R² on rolling targets**: rolling-window metrics (AVG, CSW%, etc.) are inherently smooth/autocorrelated, so a small holdout window can have very low variance — R² can look dramatically negative even when the absolute error (RMSE) is small, because R² is normalized by holdout variance, not by the metric's natural scale. That's expected statistical behavior on this kind of target, not a bug.
+This target emphasizes outcomes that are more directly connected to pitching events than ERA alone.
 
----
+### Supervised learning feature matrix
 
-## Setup
+For each time step \(t\), the model receives an ordered feature vector:
 
-```bash
-git clone https://github.com/A-Kuo/MLB-Analytics-and-Forecasting-App
-cd MLB-Analytics-and-Forecasting-App
-python -m venv .venv && source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-pip install -r requirements.txt
+$$
+X_t =
+[
+a_t,\,
+m_t,\,
+h_t,\,
+r_t,\,
+s_t
+]
+$$
 
-# Optional: add a NewsAPI key — without it, the news feed uses MLB.com's public RSS feed
-cp .env.example .env  # then edit .env to add NEWS_API_KEY
+where:
 
-streamlit run app.py
-```
+* $$a_t$$ = appearance number or time index
+* $$m_t$$ = recent momentum feature
+* $$h_t$$ = home/away context
+* $$r_t$$ = rest days since the previous appearance
+* $$s_t$$ = vector of available Statcast-derived tracking features, split into:
+  * $$\text{EV}$$ = exit velocity
+  * $$\text{xBA}$$ = expected batting average
+  * $$\text{HH}\%$$ = hard-hit rate percentage
+  * $$\text{Whiff}\%$$ = whiff rate percentage
+  * $$\text{Chase}\%$$ = chase rate percentage
+  * $$v_{\text{pitch}}$$ = velocity of the pitch
 
-Run the test suite:
+The supervised regression task learns a mapping:
 
-```bash
-pip install -r requirements-dev.txt
-pytest
-```
+$$
+\hat{y}_{t+1} = f(X_t)
+$$
 
-The `macroservice/` package can also run standalone as a REST API (not required for the dashboard, which calls it in-process):
+where $(\hat{y}_{t+1})$ is the predicted future rolling performance value.
 
-```bash
-uvicorn macroservice.api:app --reload
-```
 
-### Roster cache (Postgres)
+### Ridge regression baseline
 
-All-time roster and player-bio lookups are cached in Postgres, since the position checkboxes resolve a team's entire franchise history (up to ~2,000 players) on every render. This is optional: with no database configured the app falls back to the live MLB Stats API and works exactly as it did before, just slower.
+Standard ridge regression provides a regularized linear baseline:
 
-The same credential is consumed in two different shapes, which is easy to get wrong:
+$$
+\underset{\beta}{\text{minimize}} \, \left[ \sum_{i=1}^{n} (y_i - X_i\beta)^2 + \lambda \|\beta\|_2^2 \right]
+$$
 
-- **Streamlit** (local `.streamlit/secrets.toml`, and Streamlit Cloud's Secrets UI) wants a TOML block. This file is gitignored; never commit it.
 
-  ```toml
-  [connections.postgresql]
-  url = "postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require"
-  ```
 
-- **The backfill script** (and the GitHub Actions `DATABASE_URL` repo secret) wants a bare connection string, not TOML. 
+The first term minimizes squared prediction error, while the $\(L_2\)$ penalty shrinks large coefficients and helps stabilize estimates when features are correlated.
 
-Most providers hand out a `postgresql://` URL, which SQLAlchemy maps to psycopg2, but `normalize_database_url()` rewrites that to `postgresql+psycopg://` automatically and also accepts the TOML block, so either form works in either place.
+### Ensemble regression baseline
 
-Backfill is currently buggiest part of this app, just ahead of model training breakages. This is a work in progress that is nearing completion.
+The earlier ensemble baseline combines predictions from Support Vector Regression, Huber Regression, and Gaussian Process Regression:
 
-Seed the cache (idempotent; creates tables on first run):
+$$
+\hat{y}_{\text{ensemble}}=0.35\hat{y}_{\text{SVR}}+0.35\hat{y}_{\text{Huber}}+0.30\hat{y}_{\text{GPR}}
+$$
 
-```bash
-python scripts/backfill_roster_history.py            # all 30 teams
-python scripts/backfill_roster_history.py --team-id 109
-```
+The model-evaluation workflow compares this fixed weighted blend against candidate regressors rather than assuming it is optimal.
 
-`.github/workflows/backfill_roster_history.yml` reruns this monthly — roster history changes only a few times a year — and can be triggered manually from the Actions tab.
+### Gaussian Process predictive uncertainty
 
-### Core Dependencies
+When Gaussian Process Regression is used, the model provides both a mean prediction and an estimated predictive standard deviation:
 
-```
-streamlit>=1.35
-requests>=2.31
-pandas>=2.0
-plotly>=5.20
-python-dotenv>=1.0
-fastapi>=0.110
-uvicorn[standard]>=0.27
-feedparser>=6.0
-scikit-learn>=1.4
-SQLAlchemy>=2.0
-psycopg[binary]>=3.1
-```
+$$
+\hat{y}_t \sim \mathcal{N}(\mu_t, \sigma_t^2)
+$$
 
-`SVR`, `HuberRegressor`, and `GaussianProcessRegressor` all ship with `scikit-learn`, and Statcast is fetched as CSV over `requests`/`pandas`.
+A visual uncertainty interval can be expressed as:
+
+$$
+\mu_t \pm 1.96\sigma_t
+$$
+
+This produces an approximate 95% model-based predictive interval under the model assumptions.
+
+### Chronological train/validation split
+
+Time-series data is partitioned chronologically rather than randomly:
+
+$$
+\mathcal{D}_{\text{train}}=\{(X_t, y_t)\}_{t=1}^{T_{\text{train}}}
+$$
+
+$$
+\mathcal{D}_{\text{validation}}=\{(X_t, y_t)\}_{t=T_{\text{train}}+1}^{T}
+$$
+
+This ensures that future performance observations are not used to predict earlier observations.
+
+### Walk-forward cross-validation
+
+Walk-forward validation repeatedly expands the training window and evaluates on later observations:
+
+$$
+\text{Fold}_j:
+\quad
+\{1, \ldots, t_j\}
+\rightarrow
+\{t_j + 1, \ldots, t_j + h\}
+$$
+
+Each fold trains only on data available before the validation period. This prevents look-ahead leakage and better reflects the real forecasting task.
+
+### Mean Absolute Error
+
+MAE measures the average absolute prediction error:
+
+$$
+\text{MAE}=\frac{1}{n}\sum_{i=1}^{n}\left|y_i - \hat{y}_i\right|
+$$
+
+It remains in the native units of the target and is easy to interpret.
+
+### Root Mean Squared Error
+
+RMSE penalizes larger forecast errors more strongly:
+
+$$
+\text{RMSE}=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}
+$$
+
+It is useful when large misses are more costly than small misses.
+
+### Coefficient of determination
+
+The coefficient of determination compares model error with the variability in the validation target:
+
+$$
+R^2 = 1 -\frac{\sum_{i=1}^{n}(y_i-\hat{y}_i)^2}{\sum_{i=1}^{n}(y_i-\bar{y})^2}
+$$
+
+where $\(\bar{y}\)$ is the validation-set mean.
+
+For smoothed rolling targets, validation values can have low variance. In those cases, \(R^2\) can be volatile or negative even if MAE and RMSE indicate relatively small absolute forecast errors. Therefore, the workflow reports \(R^2\), RMSE, and MAE together.
+
 
 ---
 
-## Notes
+It ingests and normalizes roster history, season statistics, Statcast telemetry aggregates, leaderboard inputs, and team news into Neon PostgreSQL. To mitigate expensive upstream calls, the frontend reads a cache-aware data layer rather than repeatedly making expensive upstream calls. 
 
-- The MLB Stats API is fully public and does not require authentication for read access
-- Baseball Savant's CSV search endpoint is unofficial/undocumented; treat it as best-effort and always behind a graceful fallback (see the Statcast reliability note above)
-- Live game data should ideally post within 5–10 minutes of completion. Currently undergoing final integrations, so **database might experience breakages and backfill errors.**
+- Compare one or more player selections within a team and historical timeline.
+- Aggregate counting statistics by sum and rate statistics by mean across a selected cohort.
+- Visualize multi-metric season trends for hitting, pitching, and supported Statcast metrics.
+- Produce player-cohort forecasts from a configurable training window and forecast horizon.
+- Display team- and season-scoped Insights leaderboards across 22 hitting, pitching, and Statcast metrics.
+- Ingest MLB.com and SB Nation team news every six hours, then serve the dashboard from PostgreSQL rather than fetching news during user interaction.
+- Support local operation, Streamlit deployment, standalone FastAPI access, GitHub Actions ingestion, and a Next.js/Vercel interface.
+Only include the Next.js/Vercel sentence if the UI is intentionally part of the product. If it is a prototype or a migration in progress, write this instead:
+
+text
+
+- Include an in-progress Next.js/Vercel client experiment alongside the primary Streamlit analytics application.
