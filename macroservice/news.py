@@ -239,7 +239,7 @@ def fetch_team_articles(team_id: int, days: int = DEFAULT_LOOKBACK_DAYS) -> list
 
     raw = mlb_articles + sbnation_articles
 
-    by_normalized: dict[str, dict] = 
+    by_normalized: dict[str, dict] = {}
     for article in raw:
         key = article["normalized_headline"]
         existing = by_normalized.get(key)
