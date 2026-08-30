@@ -1,0 +1,32 @@
+name: Backfill Season Leaderboards (On-Demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "Start season (e.g. 1901 or 2020)"
+        required: true
+        default: "2020"
+      end_year:
+        description: "End season (e.g. 2022)"
+        required: true
+        default: "2022"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -r requirements-backfill.txt
+      - name: Run season leaderboard backfill
+        run: |
+          for year in $(seq ${{ github.event.inputs.start_year }} ${{ github.event.inputs.end_year }}); do
+            echo "Backfilling season $year..."
+            python scripts/backfill_season_leaderboard.py --season $year
+          done
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
