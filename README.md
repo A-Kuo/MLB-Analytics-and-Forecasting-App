@@ -1,3 +1,4 @@
+# MLB Baseball Metrics and Telemetry Analytics and Forecasting Pipeline/Dashboard
 > A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](#)
@@ -6,7 +7,7 @@
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-ETL_automation-2088FF?logo=githubactions&logoColor=white)](#)
 [![Tests](https://img.shields.io/badge/tests-pytest-success)](#)
 ---
-## Project Overview
+## Project Overview ⚾
 
 Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
 
