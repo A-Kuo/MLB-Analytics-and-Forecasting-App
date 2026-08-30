@@ -19,17 +19,17 @@ The machine-learning layer treats player performance as an ordered time-series r
 ---
 ## Contents:
 
-[Project Guide](##-Project-Repository-Guide)
+[Project Guide](#project-repository-guide)
 
-[Setup and Inspection](##-Setup-&-Inspection)
+[Setup and Instructions](#setup-and-instructions)
 
-[Project Architecture](##-Project-Architecture-&-Data-Engineering)
+[Project Architecture](#project-architecture-and-data-engineering)
 
-[Math Computations](##-Analytical-and-ML-Computations)
+[Math Computations](#analytical-and-ml-computations)
 
-[Limitations](##-Limitations)
+[Limitations](#limitations)
 
-[References](##-References-&-Acknowledgements)
+[References](#references-and-acknowledgments)
 
 ---
 ## Project Repository Guide
@@ -69,7 +69,7 @@ app/, components/, lib/        Next.js/TypeScript interface
 Generated local folders such as `.venv/`, `.next/`, and `node_modules/` are intentionally excluded through `.gitignore`.
 
 ---
-## Setup & Instructions
+## Setup and Instructions
 
 ### Local Installation
 
@@ -146,7 +146,7 @@ The notebook workflow documents position-aware data preparation, rolling feature
 
 
 ---
-## Project Architecture & Data Engineering
+## Project Architecture and Data Engineering
 
 ### Architecture
 
@@ -243,7 +243,9 @@ The database is designed for application-serving and analytical queries rather t
 - Retry/backoff logic handles transient upstream network failures.
 - Database failure cooldown logic prevents a single outage from creating repeated connection attempts across wide aggregate computations.
 - Completed historical seasons are treated differently from the mutable current season so cache behavior matches data freshness requirements.
+
 ---
+
 ## Analytical and ML Computations
 
 If you want to know more about the mathematics I used in the data selection, and especially in the machine learning side, see below.
@@ -462,7 +464,7 @@ The Streamlit application is the primary user interface. The Next.js application
 
 ---
 
-## References and acknowledgments
+## References and Acknowledgments
 
 ### Data sources
 
