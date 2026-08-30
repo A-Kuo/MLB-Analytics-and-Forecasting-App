@@ -1,5 +1,5 @@
 # MLB Baseball Metrics and Telemetry Analytics and Forecasting Pipeline/Dashboard
-> A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
+A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](#)
 [![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)](#)
