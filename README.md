@@ -1,5 +1,5 @@
 # MLB Baseball Metrics and Telemetry Analytics and Forecasting Pipeline/Dashboard
-A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
+⚾ A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](#)
 [![Streamlit](https://img.shields.io/badge/Streamlit-dashboard-FF4B4B?logo=streamlit&logoColor=white)](#)
@@ -25,7 +25,7 @@ A full-stack MLB analytics platform that ingests public sports data into a Postg
 
 ---
 
-## Project Overview ⚾
+## Project Overview
 
 Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
 
@@ -37,7 +37,7 @@ The machine-learning layer treats player performance as an ordered time-series r
 
 ---
 
-#### Worktree:
+### Worktree:
 ```text
 app.py                         Streamlit entry point and shared navigation
 pages/                         Streamlit Analytics & Forecasts and Insights pages
