@@ -140,19 +140,49 @@ def require_known_team(team_id: int) -> None:
 
 
 @cached(ttl_seconds=ROSTER_TTL_SECONDS)
+@cached(ttl_seconds=ROSTER_TTL_SECONDS)
 def get_roster(team_id: int, season: int) -> list[dict]:
-    resp = request_with_backoff("GET", f"{BASE_URL}/teams/{team_id}/roster", params={"season": season})
+    """Returns a season roster in the app's normalized shape.
+
+    Historical MLB Stats API roster payloads occasionally contain an entry
+    without person.fullName or position.abbreviation. Keep the valid players
+    and skip only malformed entries instead of failing an entire team-season
+    backfill because of one incomplete historical record.
+    """
+    resp = request_with_backoff(
+        "GET",
+        f"{BASE_URL}/teams/{team_id}/roster",
+        params={"season": season},
+    )
     resp.raise_for_status()
-    roster = resp.json().get("roster", [])
-    return [
-        {
-            "id": entry["person"]["id"],
-            "name": entry["person"]["fullName"],
-            "position": entry["position"]["abbreviation"],
-            "is_pitcher": entry["position"]["abbreviation"] == "P",
-        }
-        for entry in roster
-    ]
+
+    normalized_roster: list[dict] = []
+    for entry in resp.json().get("roster", []):
+        person = entry.get("person") or {}
+        position = entry.get("position") or {}
+
+        player_id = person.get("id")
+        name = person.get("fullName")
+        position_abbr = position.get("abbreviation")
+
+        if player_id is None or not name or not position_abbr:
+            print(
+                f"Skipping incomplete roster entry for team {team_id}, season {season}: "
+                f"player_id={player_id}, name={name!r}, position={position_abbr!r}",
+                flush=True,
+            )
+            continue
+
+        normalized_roster.append(
+            {
+                "id": player_id,
+                "name": name,
+                "position": position_abbr,
+                "is_pitcher": position_abbr == "P",
+            }
+        )
+
+    return normalized_roster
 
 
 @cached(ttl_seconds=GAME_DATA_TTL_SECONDS)
