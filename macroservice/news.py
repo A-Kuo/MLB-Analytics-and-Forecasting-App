@@ -225,9 +225,21 @@ def fetch_team_articles(team_id: int, days: int = DEFAULT_LOOKBACK_DAYS) -> list
     scripts/ingest_team_news.py upserts. Plain Python, not pandas --
     ingestion scripts stay light (see requirements-backfill.txt).
     """
-    raw = fetch_mlb_articles(team_id, days) + fetch_sbnation_articles(team_id, days)
+    mlb_articles: list[dict] = []
+    try:
+        mlb_articles = fetch_mlb_articles(team_id, days)
+    except Exception as exc:
+        logger.warning("MLB.com RSS fetch failed for team %s: %s", team_id, exc)
 
-    by_normalized: dict[str, dict] = {}
+    sbnation_articles: list[dict] = []
+    try:
+        sbnation_articles = fetch_sbnation_articles(team_id, days)
+    except Exception as exc:
+        logger.warning("SB Nation feed fetch failed for team %s: %s", team_id, exc)
+
+    raw = mlb_articles + sbnation_articles
+
+    by_normalized: dict[str, dict] = 
     for article in raw:
         key = article["normalized_headline"]
         existing = by_normalized.get(key)
