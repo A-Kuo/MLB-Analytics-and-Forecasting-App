@@ -5,9 +5,8 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)](#)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-ETL_automation-2088FF?logo=githubactions&logoColor=white)](#)
 [![Tests](https://img.shields.io/badge/tests-pytest-success)](#)
-
-
-## This Project
+---
+## Project Overview
 
 Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
 
@@ -19,10 +18,232 @@ The machine-learning layer treats player performance as an ordered time-series r
 
 ---
 ## Contents:
+
+[Project Guide](##-Project-Repository-Guide)
+
+[Setup and Inspection](##-Setup-&-Inspection)
+
+[Project Architecture](##-Project-Architecture-&-Data-Engineering)
+
 [Math Computations](##-Analytical-and-ML-Computations)
+
+[Limitations](##-Limitations)
+
+[References](##-References-&-Acknowledgements)
+
+---
+## Project Repository Guide
+
+
+#### Worktree:
+```text
+app.py                         Streamlit entry point and shared navigation
+pages/                         Streamlit Analytics & Forecasts and Insights pages
+client.py                      UI-facing cache-aware data-access facade
+chart.py                       Plotly chart construction
+
+macroservice/
+  api.py                       FastAPI adapter
+  db.py                        Database configuration and schema initialization
+  *_db.py                      Persistence and query modules
+  teams.py                     Team, roster, and schedule client
+  players.py                   Player game-log and season-stat client
+  statcast*.py                 Statcast retrieval and season aggregation
+  features.py                  Derived feature and sabermetric construction
+  regression.py                Regression implementations
+  trajectories.py              Forecast and trajectory orchestration
+  news.py                      Team-news source retrieval and parsing
+  backoff.py                   Upstream retry behavior
+  caching.py                   TTL caching primitives
+
+db/schema.sql                  PostgreSQL schema
+scripts/                       Backfill, ingestion, and forecast-loading CLI jobs
+.github/workflows/             Scheduled/manual GitHub Actions jobs
+notebooks/                     EDA, model evaluation, Kaggle GPU runs, smoke results
+tests/                         Unit and database-integration tests
+utils/                         Shared aggregation, filters, formatting, and UI helpers
+
+app/, components/, lib/        Next.js/TypeScript interface
+```
+
+Generated local folders such as `.venv/`, `.next/`, and `node_modules/` are intentionally excluded through `.gitignore`.
+
+---
+## Setup & Instructions
+
+### Local Installation
+
+If you wish to clone this project locally and analyze the worktree:
+
+```bash
+# Clone the repository and navigate inside
+git clone https://github.com/A-Kuo/MLB-Analytics-and-Forecasting-App
+cd MLB-Analytics-and-Forecasting-App
+
+# Create and activate your virtual environment
+python -m venv .venv 
+source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
+
+# Install the primary runtime dependencies
+pip install -r requirements.txt
+```
+
+#### Environment Variables (Optional)
+Copy the configuration template to register external API integrations:
+```bash
+cp .env.example .env
+```
+> Add `NEWS_API_KEY` to .env. Without it, the application fallback pipeline automatically switches to MLB.com's public RSS feed.*
 
 ---
 
+### Running the Application
+
+The web dashboard is built using Streamlit. To run the analytics application locally:
+
+```bash
+streamlit run app.py
+```
+
+#### Optional: Standalone API Service
+The `macroservice/` package can also execute independently as a REST API (this is completely optional, as the primary Streamlit dashboard calls this module in-process):
+
+```bash
+uvicorn macroservice.api:app --reload
+```
+
+---
+
+### Automated Testing Framework
+
+The repository maintains an intensive unit and integration suite covering data layers, state transformations, modeling logic, and system infrastructure. 
+
+To configure the development dependencies and evaluate the test coverage:
+
+```bash
+# Install testing tools and run the suite
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+Our current test pipeline covers validation across these foundational layers:
+* **Analytical Transformations:** Rolling feature engineering, sabermetric metric selections, and player-cohort aggregations.
+* **Network & Database Infrastructure:** API retry/backoff policies, TTL caching boundaries, PostgreSQL schema configurations, and idempotent upsert routes.
+* **Content Aggregation Pipelines:** News-feed parsing, data deduplication, and card-rendering mechanics.
+* **Machine Learning Engine:** Trajectory forecasting vectors, regression behaviors, and UI-state synchronization.
+
+---
+
+### Notebook & Experimental Artifacts
+
+The notebook workflow documents position-aware data preparation, rolling feature construction, sabermetric transformations, model comparisons, walk-forward validation, hyperparameter tuning, and error evaluation.
+
+* [MLB Aggregate-Model Evaluation Notebook](notebooks/mlb-aggregate-models-v2.ipynb)
+* [Kaggle GPU Season-Aggregate Workflow](notebooks/kaggle/season_aggregate_gpu/season_aggregate_gpu.ipynb)
+* [Kaggle GPU Statcast-Era Workflow](notebooks/kaggle/statcast_era_gpu/statcast_era_gpu.ipynb)
+* [Smoke-Test Output: Season Aggregate](notebooks/results/season_aggregate-2026.08.27-0045-smoke.json)
+* [Smoke-Test Output: Statcast Era](notebooks/results/statcast_era-2026.08.27-0154-smoke.json)
+
+
+---
+## Project Architecture & Data Engineering
+
+### Architecture
+
+```mermaid
+flowchart LR
+    USER[User]
+
+    subgraph UI["Presentation layer"]
+        STREAMLIT[Streamlit dashboard<br/>app.py + pages/]
+        NEXT[Next.js client<br/>app/ + components/]
+        FASTAPI[FastAPI interface<br/>macroservice/api.py]
+    end
+
+    subgraph SERVICE["Application and analytics layer"]
+        CLIENT[client.py<br/>cache-aware facade]
+        DOMAIN[macroservice/<br/>source clients · transforms · aggregation<br/>forecasting · caching · DB access]
+    end
+
+    subgraph PIPELINES["Data engineering layer"]
+        ROSTER[backfill_roster_history.py]
+        LEADERBOARD[backfill_season_leaderboard.py]
+        NEWS[ingest_team_news.py]
+        ACTIONS[GitHub Actions workflows]
+    end
+
+    subgraph STORAGE["Persistence layer"]
+        NEON[(Neon PostgreSQL)]
+        MART[MLB analytics data mart]
+    end
+
+    subgraph SOURCES["External sources"]
+        MLB[MLB Stats API]
+        SAVANT[Baseball Savant / Statcast]
+        RSS[MLB.com + SB Nation feeds]
+    end
+
+    USER --> STREAMLIT
+    USER --> NEXT
+    STREAMLIT --> CLIENT
+    NEXT --> FASTAPI
+    FASTAPI --> DOMAIN
+    CLIENT --> DOMAIN
+
+    DOMAIN --> NEON
+    NEON --> MART
+
+    ACTIONS --> ROSTER
+    ACTIONS --> LEADERBOARD
+    ACTIONS --> NEWS
+
+    ROSTER --> MLB
+    LEADERBOARD --> MLB
+    LEADERBOARD --> SAVANT
+    NEWS --> RSS
+
+    ROSTER --> NEON
+    LEADERBOARD --> NEON
+    NEWS --> NEON
+
+    DOMAIN -. controlled fallback .-> MLB
+    DOMAIN -. Statcast retrieval .-> SAVANT
+```
+
+### Neon PostgreSQL datastore
+
+Neon PostgreSQL acts as a domain-specific MLB analytics datastore rather than an enterprise-scale data lake. It stores curated, relational data needed by the application, including player biographies, roster history, team-season associations, player season statistics, Statcast aggregates, leaderboard inputs, and team-news records.
+
+The database is designed for application-serving and analytical queries rather than raw file retention. Backfill jobs and lazy cache warming persist data through idempotent upserts, making partial jobs safe to retry.
+
+### Data lifecycle
+
+| Dataset | Source | Refresh path | Storage behavior | Application behavior |
+|---|---|---|---|---|
+| Team and player metadata | MLB Stats API | Monthly/manual roster-history backfill | Stored in player and roster-history tables | PostgreSQL-first with supported live fallback |
+| Completed-season statistics | MLB Stats API | On-demand season backfill and lazy cache warming | Stored by player, team, season, and stat group | PostgreSQL-first |
+| Current-season statistics | MLB Stats API | Dashboard request or manual refresh | Treated as mutable | Short-TTL retrieval to preserve freshness |
+| Statcast aggregates | Baseball Savant | Per-season backfill and cache warming | Stored by player and season | Unified with standard metrics where available |
+| Insights leaderboards | Derived from stored season data | Per-season leaderboard backfill | Stored/queryable through season-scoped relations | PostgreSQL-only to avoid high-volume live API calls |
+| Team news | MLB.com and SB Nation feeds | GitHub Actions every 6 hours | Deduplicated, upserted, and pruned | PostgreSQL-only; never scraped during dashboard interaction |
+
+### Operational workflows
+
+| Workflow | Trigger | Responsibility |
+|---|---|---|
+| `ingest_team_news.yml` | Every 6 hours and manual dispatch | Ingests, deduplicates, upserts, and prunes team-news records |
+| `backfill_roster_history.yml` | Monthly and manual dispatch | Refreshes player biographies and historical roster data |
+| `backfill_leaderboards.yml` | Manual dispatch | Populates season-scoped roster, player-stat, and Statcast data needed by Insights |
+
+### Reliability and freshness controls
+
+- Postgres-first reads reduce repetitive external API calls for historical data.
+- Live API fallback preserves dashboard operation when a cache miss occurs on supported paths.
+- Successful fallback responses can be written back to PostgreSQL to warm the cache.
+- Retry/backoff logic handles transient upstream network failures.
+- Database failure cooldown logic prevents a single outage from creating repeated connection attempts across wide aggregate computations.
+- Completed historical seasons are treated differently from the mutable current season so cache behavior matches data freshness requirements.
+---
 ## Analytical and ML Computations
 
 If you want to know more about the mathematics I used in the data selection, and especially in the machine learning side, see below.
@@ -224,20 +445,58 @@ where $\(\bar{y}\)$ is the validation-set mean.
 
 For smoothed rolling targets, validation values can have low variance. In those cases, \(R^2\) can be volatile or negative even if MAE and RMSE indicate relatively small absolute forecast errors. Therefore, the workflow reports \(R^2\), RMSE, and MAE together.
 
+---
+
+## Limitations
+Public MLB and Baseball Savant endpoints may be rate-limited, incomplete, or temporarily unavailable; the project uses retry/backoff and controlled fallback behavior where applicable.
+
+Historical franchise continuity can be difficult to model because modern team IDs may represent predecessor franchises, relocations, name changes, or incomplete historical API coverage.
+
+Insights leaderboards require a season-specific backfill before a season is fully queryable.
+
+Current-season data is mutable and requires periodic refreshes; completed historical seasons are more stable cache candidates.
+
+Forecasting results depend on the volume and quality of player history and should be interpreted as analytical estimates rather than guarantees.
+
+The Streamlit application is the primary user interface. The Next.js application should be labeled according to its current maturity level.
 
 ---
 
-It ingests and normalizes roster history, season statistics, Statcast telemetry aggregates, leaderboard inputs, and team news into Neon PostgreSQL. To mitigate expensive upstream calls, the frontend reads a cache-aware data layer rather than repeatedly making expensive upstream calls. 
+## References and acknowledgments
 
-- Compare one or more player selections within a team and historical timeline.
-- Aggregate counting statistics by sum and rate statistics by mean across a selected cohort.
-- Visualize multi-metric season trends for hitting, pitching, and supported Statcast metrics.
-- Produce player-cohort forecasts from a configurable training window and forecast horizon.
-- Display team- and season-scoped Insights leaderboards across 22 hitting, pitching, and Statcast metrics.
-- Ingest MLB.com and SB Nation team news every six hours, then serve the dashboard from PostgreSQL rather than fetching news during user interaction.
-- Support local operation, Streamlit deployment, standalone FastAPI access, GitHub Actions ingestion, and a Next.js/Vercel interface.
-Only include the Next.js/Vercel sentence if the UI is intentionally part of the product. If it is a prototype or a migration in progress, write this instead:
+### Data sources
 
-text
+- [MLB Stats API](https://statsapi.mlb.com/api/) — team rosters, player game logs, season statistics, schedules, and game metadata
+- [Baseball Savant Statcast Search](https://baseballsavant.mlb.com/statcast_search) — pitch and batted-ball telemetry, including velocity, xBA, hard-hit rate, whiff-related measures, and related Statcast fields
+- [MLB.com](https://www.mlb.com/) — official team-news RSS feeds and team logos
+- [SB Nation](https://www.sbnation.com/) — team-specific RSS/Atom feeds where configured
 
-- Include an in-progress Next.js/Vercel client experiment alongside the primary Streamlit analytics application.
+### Libraries and platforms
+
+- [Streamlit](https://streamlit.io/) — interactive Python dashboard
+- [FastAPI](https://fastapi.tiangolo.com/) — service/API interface
+- [Neon](https://neon.tech/) — managed PostgreSQL database
+- [SQLAlchemy](https://www.sqlalchemy.org/) and [psycopg](https://www.psycopg.org/) — PostgreSQL access and persistence
+- [Plotly](https://plotly.com/python/) — interactive charts
+- [pandas](https://pandas.pydata.org/) and [NumPy](https://numpy.org/) — data transformation and numerical computation
+- [scikit-learn](https://scikit-learn.org/) — regression, model selection, time-series validation, and evaluation
+- [GitHub Actions](https://docs.github.com/actions) — scheduled and manually triggered data workflows
+- [Kaggle](https://www.kaggle.com/) — GPU-enabled notebook experimentation and smoke testing
+
+### Methodology references
+
+- [scikit-learn: TimeSeriesSplit](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html)
+- [scikit-learn: GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html)
+- [scikit-learn: Regression metrics](https://scikit-learn.org/stable/modules/model_evaluation.html#regression-metrics)
+- [MLB glossary](https://www.mlb.com/glossary) — baseball terminology and metric context
+- [FanGraphs Library](https://library.fangraphs.com/) — sabermetric definitions and methodology background
+
+### Project artifacts
+
+- [Modeling and evaluation notebook](notebooks/mlb-aggregate-models-v2.ipynb)
+- [Season-aggregate Kaggle workflow](notebooks/kaggle/season_aggregate_gpu/season_aggregate_gpu.ipynb)
+- [Statcast-era Kaggle workflow](notebooks/kaggle/statcast_era_gpu/statcast_era_gpu.ipynb)
+
+---
+
+
