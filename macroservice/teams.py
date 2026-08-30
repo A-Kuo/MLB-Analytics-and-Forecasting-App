@@ -70,6 +70,47 @@ TEAM_NEWS_HUB_SLUGS: dict[int, str] = {
     158: "brewers",
 }
 
+# The founding / debut season for each franchise in the modern MLB era (or AL/NL entry).
+# Used to filter out expansion teams when backfilling historical seasons prior to their founding.
+FRANCHISE_ESTABLISHED_YEAR: dict[int, int] = {
+    108: 1961,  # Los Angeles Angels
+    109: 1998,  # Arizona Diamondbacks
+    110: 1901,  # Baltimore Orioles (orig. Milwaukee Brewers 1901 -> St. Louis Browns 1902-1953)
+    111: 1901,  # Boston Red Sox (Boston Americans)
+    112: 1876,  # Chicago Cubs
+    113: 1882,  # Cincinnati Reds
+    114: 1901,  # Cleveland Guardians (Blues/Bronchos/Naps/Indians)
+    115: 1993,  # Colorado Rockies
+    116: 1901,  # Detroit Tigers
+    117: 1962,  # Houston Astros (Colt .45s)
+    118: 1969,  # Kansas City Royals
+    119: 1884,  # Los Angeles Dodgers (Brooklyn Atlantics/Bridegrooms/Superbas/Robins/Dodgers)
+    120: 1969,  # Washington Nationals (Montreal Expos 1969-2004)
+    121: 1962,  # New York Mets
+    133: 1901,  # Athletics (Philadelphia -> Kansas City -> Oakland)
+    134: 1882,  # Pittsburgh Pirates
+    135: 1969,  # San Diego Padres
+    136: 1977,  # Seattle Mariners
+    137: 1883,  # San Francisco Giants (New York Gothams/Giants)
+    138: 1882,  # St. Louis Cardinals
+    139: 1998,  # Tampa Bay Rays (Devil Rays)
+    140: 1961,  # Texas Rangers (Washington Senators 1961-1971)
+    141: 1977,  # Toronto Blue Jays
+    142: 1901,  # Minnesota Twins (Washington Senators 1901-1960)
+    143: 1883,  # Philadelphia Phillies
+    144: 1876,  # Atlanta Braves (Boston Red Stockings/Braves -> Milwaukee Braves)
+    145: 1901,  # Chicago White Sox
+    146: 1993,  # Miami Marlins (Florida Marlins)
+    147: 1901,  # New York Yankees (orig. Baltimore Orioles 1901-1902 -> NY Highlanders 1903-1912)
+    158: 1969,  # Milwaukee Brewers (orig. Seattle Pilots 1969)
+}
+
+
+def is_team_active_in_season(team_id: int, season: int) -> bool:
+    """True if the franchise existed and played in the given season."""
+    established = FRANCHISE_ESTABLISHED_YEAR.get(team_id, 1901)
+    return season >= established
+
 
 def team_news_hub_url(team_id: int) -> str:
     """The team's dedicated news hub, falling back to the general MLB.com
