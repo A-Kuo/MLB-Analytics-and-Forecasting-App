@@ -6,3 +6,5 @@ python-dotenv>=1.0
 SQLAlchemy>=2.0
 psycopg[binary]>=3.1
 feedparser>=6.0
+numpy>=1.26.0
+pandas>=2.0.0
