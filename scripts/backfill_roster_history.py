@@ -46,7 +46,7 @@ def backfill(engine, team_ids: list[int]) -> list[tuple[int, Exception]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--team-id", type=int, help="Backfill only this team (default: all 30)")
+    # parser.add_argument("--team-id", type=int, help="Backfill only this team (default: all 30)")
     args = parser.parse_args()
 
     load_dotenv()
