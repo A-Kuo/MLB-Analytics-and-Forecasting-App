@@ -1,11 +1,11 @@
 # MLB Baseball Metrics and Telemetry Analytics and Forecasting Pipeline/Dashboard
 ⚾ A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
 
-[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](#)
-[![App](https://img.shields.io/badge/Fullstack-FFFFFF?logo=Ubuntu)](#)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-FFFFFF?logo=postgresql)](#)
-[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-FFFFFF?logo=githubactions)](#)
-[![Tests](https://img.shields.io/badge/pytest-white?logo=pytest)](#)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white&style=for-the-badge)](#)
+[![App](https://img.shields.io/badge/Fullstack-FFFFFF?logo=Ubuntu&style=for-the-badge)](#)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-FFFFFF?logo=postgresql&style=for-the-badge)](#)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-FFFFFF?logo=githubactions&style=for-the-badge)](#)
+[![Tests](https://img.shields.io/badge/pytest-white?logo=pytest&style=for-the-badge)](#)
 
 ---
 
