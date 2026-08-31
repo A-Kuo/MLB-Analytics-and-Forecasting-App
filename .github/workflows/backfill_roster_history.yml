@@ -19,11 +19,11 @@ on:
         required: false
         default: ""
         type: string
-      team_id:
-        description: "Optional MLB team ID; leave blank to process all teams"
-        required: false
-        default: ""
-        type: string
+      # team_id:
+        # description: "Optional MLB team ID; leave blank to process all teams"
+        # required: false
+        # default: ""
+        # type: string
 
 concurrency:
   group: roster-history-backfill
