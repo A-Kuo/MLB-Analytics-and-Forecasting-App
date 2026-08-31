@@ -59,7 +59,8 @@ def main() -> int:
         )
         return 2
 
-    team_ids = [args.team_id] if args.team_id else [team["id"] for team in teams.TEAMS]
+    # team_ids = [args.team_id] if args.team_id else [team["id"] for team in teams.TEAMS]
+    team_ids = [team["id"] for team in teams.TEAMS]
 
     engine = create_engine(database_url)
     db.ensure_schema(engine)
