@@ -1,36 +1,37 @@
-name: Backfill roster and season history
+name: Backfill roster history
 
-# Roster history (debuts, retirements, trades) changes only a few times a
-# year, so a monthly refresh is plenty -- workflow_dispatch covers anything
-# more urgent, like right after the trade deadline.
+# Roster history changes relatively infrequently. Run this monthly to refresh
+# player bios, debuts, retirements, and franchise roster history. Use manual
+# dispatch after events such as the trade deadline or when repairing a cache.
 on:
   schedule:
     - cron: "0 8 1 * *"
   workflow_dispatch: {}
 
+concurrency:
+  group: roster-history-backfill
+  cancel-in-progress: false
+
 jobs:
-  backfill:
+  backfill-roster-history:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          
-      - run: pip install -r requirements-backfill.txt
-      
-      # --- EXISTING STEP ---
+          cache: "pip"
+          cache-dependency-path: requirements-backfill.txt
+
+      - name: Install backfill dependencies
+        run: pip install -r requirements-backfill.txt
+
       - name: Backfill roster history
         run: python scripts/backfill_roster_history.py
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      # --- NEW STEP: Backfill seasons 1901-2022 ---
-      - name: Backfill season leaderboard (1901-2022)
-        run: |
-          for year in $(seq 1901 2022); do
-            python scripts/backfill_season_leaderboard.py --season $year
-          done
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
