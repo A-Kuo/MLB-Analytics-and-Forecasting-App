@@ -58,9 +58,9 @@ jobs:
             args+=(--end-year "${{ inputs.end_year }}")
           fi
 
-          if [ -n "${{ inputs.team_id }}" ]; then
-            args+=(--team-id "${{ inputs.team_id }}")
-          fi
+          # if [ -n "${{ inputs.team_id }}" ]; then
+            # args+=(--team-id "${{ inputs.team_id }}")
+          # fi
 
           python scripts/backfill_roster_history.py "${args[@]}"
         env:
