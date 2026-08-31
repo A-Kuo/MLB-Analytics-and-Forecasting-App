@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
-import { TopNav } from "@/components/nav/TopNav";
+import { AppShell } from "@/components/layout/AppShell";
 
 import "./globals.css";
 
@@ -18,9 +18,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <TopNav />
-        <main className="mx-auto max-w-[1280px] px-xl py-xxl">{children}</main>
+      <body className={`${inter.variable} font-sans antialiased bg-[#121212] text-gray-200`}>
+        <AppShell>
+          {children}
+        </AppShell>
       </body>
     </html>
   );
