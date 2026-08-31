@@ -19,11 +19,11 @@ on:
         required: false
         default: ""
         type: string
-      team_id:
-        description: "Optional MLB team ID; leave blank to process all teams"
-        required: false
-        default: ""
-        type: string
+      # team_id:
+        # description: "Optional MLB team ID; leave blank to process all teams"
+        # required: false
+        # default: ""
+        # type: string
 
 concurrency:
   group: roster-history-backfill
@@ -58,9 +58,9 @@ jobs:
             args+=(--end-year "${{ inputs.end_year }}")
           fi
 
-          if [ -n "${{ inputs.team_id }}" ]; then
-            args+=(--team-id "${{ inputs.team_id }}")
-          fi
+          # if [ -n "${{ inputs.team_id }}" ]; then
+            # args+=(--team-id "${{ inputs.team_id }}")
+          # fi
 
           python scripts/backfill_roster_history.py "${args[@]}"
         env:

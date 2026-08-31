@@ -46,8 +46,36 @@ def backfill(engine, team_ids: list[int]) -> list[tuple[int, Exception]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    # parser.add_argument("--team-id", type=int, help="Backfill only this team (default: all 30)")
+    parser.add_argument(
+        "--start-year",
+        type=int,
+        help=(
+            "Optional workflow scope label. The roster cache remains all-time "
+            "and uses runtime timeline filtering."
+        ),
+    )
+    parser.add_argument(
+        "--end-year",
+        type=int,
+        help=(
+            "Optional workflow scope label. The roster cache remains all-time "
+            "and uses runtime timeline filtering."
+        ),
+    )
     args = parser.parse_args()
+
+    if (args.start_year is None) != (args.end_year is None):
+        parser.error("--start-year and --end-year must be supplied together.")
+
+    if args.start_year is not None and args.start_year > args.end_year:
+        parser.error("--start-year cannot be later than --end-year.")
+
+    if args.start_year is not None:
+        print(
+            f"Requested roster-history workflow scope: "
+            f"{args.start_year}-{args.end_year}.",
+            flush=True,
+        )
 
     load_dotenv()
     database_url = db.resolve_database_url()
@@ -59,7 +87,7 @@ def main() -> int:
         )
         return 2
 
-    # team_ids = [args.team_id] if args.team_id else [team["id"] for team in teams.TEAMS]
+    # Always process every configured team.
     team_ids = [team["id"] for team in teams.TEAMS]
 
     engine = create_engine(database_url)
@@ -68,12 +96,14 @@ def main() -> int:
 
     succeeded = len(team_ids) - len(failures)
     print(f"\n{succeeded}/{len(team_ids)} teams backfilled.")
+
     if failures:
-        # Non-zero exit so a scheduled CI run surfaces as failed even when
-        # most teams succeeded -- a silent partial refresh is worse than a
-        # visible one.
-        print("Failed: " + ", ".join(str(team_id) for team_id, _ in failures), file=sys.stderr)
+        print(
+            "Failed: " + ", ".join(str(team_id) for team_id, _ in failures),
+            file=sys.stderr,
+        )
         return 1
+
     return 0
 
 
