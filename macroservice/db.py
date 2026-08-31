@@ -13,6 +13,8 @@ import os
 import tomllib
 from pathlib import Path
 
+from psycopg.rows import dict_row
+
 from sqlalchemy import Engine, text
 
 _REPO_ROOT = Path(__file__).parent.parent

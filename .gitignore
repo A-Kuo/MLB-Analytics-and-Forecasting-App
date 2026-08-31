@@ -26,4 +26,8 @@ notebooks/_notebook_common.py
 /build
 *.tsbuildinfo
 next-env.d.ts
-.vercel
+.vercel\
+
+# Repomix output file -- this is a generated file that is not part of the source code.
+repomix-output.xml
+AGENT.MD
