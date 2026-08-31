@@ -50,16 +50,16 @@ def main() -> int:
         "--start-year",
         type=int,
         help=(
-            "Optional workflow scope label. Roster membership remains an "
-            "all-time franchise cache; timeline filtering occurs in the app."
+            "Optional workflow scope label. The roster cache remains all-time "
+            "and uses runtime timeline filtering."
         ),
     )
     parser.add_argument(
         "--end-year",
         type=int,
         help=(
-            "Optional workflow scope label. Roster membership remains an "
-            "all-time franchise cache; timeline filtering occurs in the app."
+            "Optional workflow scope label. The roster cache remains all-time "
+            "and uses runtime timeline filtering."
         ),
     )
     args = parser.parse_args()
@@ -72,11 +72,39 @@ def main() -> int:
 
     if args.start_year is not None:
         print(
-            f"Requested workflow range: {args.start_year}-{args.end_year}. "
-            "The roster-history cache remains all-time; the range does not "
-            "filter persisted franchise membership.",
+            f"Requested roster-history workflow scope: "
+            f"{args.start_year}-{args.end_year}.",
             flush=True,
         )
+
+    load_dotenv()
+    database_url = db.resolve_database_url()
+    if not database_url:
+        print(
+            "No database connection string found -- set DATABASE_URL (environment or .env), "
+            "or configure [connections.postgresql].url in .streamlit/secrets.toml.",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Always process every configured team.
+    team_ids = [team["id"] for team in teams.TEAMS]
+
+    engine = create_engine(database_url)
+    db.ensure_schema(engine)
+    failures = backfill(engine, team_ids)
+
+    succeeded = len(team_ids) - len(failures)
+    print(f"\n{succeeded}/{len(team_ids)} teams backfilled.")
+
+    if failures:
+        print(
+            "Failed: " + ", ".join(str(team_id) for team_id, _ in failures),
+            file=sys.stderr,
+        )
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
