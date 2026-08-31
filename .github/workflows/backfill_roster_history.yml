@@ -1,229 +1,67 @@
-name: Backfill Roster History (On-Demand)
+name: Backfill roster history
 
-"""Populate the PostgreSQL all-time roster-history cache from the MLB Stats API.
+# Roster history changes infrequently, so the normal all-time refresh runs
+# monthly. workflow_dispatch allows targeted historical year ranges or one
+# team to be refreshed manually.
+on:
+  schedule:
+    - cron: "0 8 1 * *"
 
-The roster-history cache stores franchise-level player membership and player
-career metadata. It is intentionally all-time: UI timeline filters are applied
-later with player debut/last-active years, not during this backfill.
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "Optional inclusive first season to process, e.g. 1901"
+        required: false
+        default: ""
+        type: string
+      end_year:
+        description: "Optional inclusive final season to process, e.g. 2022"
+        required: false
+        default: ""
+        type: string
+      team_id:
+        description: "Optional MLB team ID; leave blank to process all teams"
+        required: false
+        default: ""
+        type: string
 
-Run manually or through .github/workflows/backfill_roster_history.yml:
+concurrency:
+  group: roster-history-backfill
+  cancel-in-progress: false
 
-    python scripts/backfill_roster_history.py
-    python scripts/backfill_roster_history.py --team-id 109
-    python scripts/backfill_roster_history.py --team-ids 108,109,110
-    python scripts/backfill_roster_history.py --start-index 1 --end-index 10
-    python scripts/backfill_roster_history.py --start-index 11 --end-index 20
-    python scripts/backfill_roster_history.py --start-index 21 --end-index 30
-    python scripts/backfill_roster_history.py --team-id 147 --dry-run
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
 
-Reads DATABASE_URL from the environment or local .env. The script runs outside
-Streamlit and is intended for terminal and GitHub Actions execution.
-"""
-from __future__ import annotations
+    steps:
+      - uses: actions/checkout@v4
 
-import argparse
-import sys
-from pathlib import Path
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
+      - name: Install backfill dependencies
+        run: pip install -r requirements-backfill.txt
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+      - name: Backfill roster history
+        shell: bash
+        run: |
+          args=()
 
-from macroservice import db, roster_history, roster_history_db, teams  # noqa: E402
+          if [ -n "${{ inputs.start_year }}" ]; then
+            args+=(--start-year "${{ inputs.start_year }}")
+          fi
 
+          if [ -n "${{ inputs.end_year }}" ]; then
+            args+=(--end-year "${{ inputs.end_year }}")
+          fi
 
-def _parse_team_ids(value: str) -> list[int]:
-    """Parse a comma-separated team-ID list for argparse."""
-    try:
-        team_ids = [int(item.strip()) for item in value.split(",") if item.strip()]
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            "--team-ids must be a comma-separated list of integer MLB team IDs."
-        ) from exc
+          if [ -n "${{ inputs.team_id }}" ]; then
+            args+=(--team-id "${{ inputs.team_id }}")
+          fi
 
-    if not team_ids:
-        raise argparse.ArgumentTypeError(
-            "--team-ids must contain at least one MLB team ID."
-        )
-
-    unknown_ids = sorted(set(team_ids) - set(teams.TEAM_BY_ID))
-    if unknown_ids:
-        raise argparse.ArgumentTypeError(
-            f"Unknown configured MLB team ID(s): {', '.join(map(str, unknown_ids))}"
-        )
-
-    return team_ids
-
-
-def _selected_team_ids(args: argparse.Namespace) -> list[int]:
-    """Resolve mutually exclusive team-selection CLI options.
-
-    Priority:
-    1. --team-id: one team
-    2. --team-ids: explicit comma-separated team list
-    3. --start-index / --end-index: one-based inclusive slice of configured teams
-    4. default: all configured teams
-    """
-    all_team_ids = [team["id"] for team in teams.TEAMS]
-
-    if args.team_id is not None:
-        if args.team_id not in teams.TEAM_BY_ID:
-            raise ValueError(f"Unknown configured MLB team ID: {args.team_id}")
-        return [args.team_id]
-
-    if args.team_ids is not None:
-        return args.team_ids
-
-    start_index = args.start_index or 1
-    end_index = args.end_index or len(all_team_ids)
-
-    if start_index < 1:
-        raise ValueError("--start-index must be at least 1.")
-
-    if end_index < start_index:
-        raise ValueError("--end-index cannot be smaller than --start-index.")
-
-    if end_index > len(all_team_ids):
-        raise ValueError(
-            f"--end-index cannot exceed {len(all_team_ids)}, "
-            "the number of configured teams."
-        )
-
-    return all_team_ids[start_index - 1 : end_index]
-
-
-def backfill(
-    engine,
-    team_ids: list[int],
-    *,
-    dry_run: bool = False,
-) -> list[tuple[int, Exception]]:
-    """Fetch and persist the all-time roster for each requested team.
-
-    Each selected team is isolated so a source/API/database issue for one team
-    does not prevent the remaining teams from being refreshed.
-
-    The stored roster is intentionally all-time. Do not apply timeline-year
-    filtering here; player career overlap is resolved at dashboard query time.
-    """
-    failures: list[tuple[int, Exception]] = []
-
-    for index, team_id in enumerate(team_ids, start=1):
-        name = teams.TEAM_BY_ID.get(team_id, {}).get("name", str(team_id))
-        print(f"[{index}/{len(team_ids)}] {name} ({team_id})...", flush=True)
-
-        if dry_run:
-            print("    DRY RUN: no API call or database write.", flush=True)
-            continue
-
-        try:
-            roster = roster_history.get_team_roster_with_active_years(team_id)
-            roster_history_db.upsert_team_roster(engine, team_id, roster)
-            print(f"    {len(roster)} all-time players", flush=True)
-        except Exception as exc:  # noqa: BLE001
-            print(f"    FAILED: {exc}", flush=True)
-            failures.append((team_id, exc))
-
-    return failures
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-
-    selection_group = parser.add_mutually_exclusive_group()
-    selection_group.add_argument(
-        "--team-id",
-        type=int,
-        help="Backfill one configured MLB team ID.",
-    )
-    selection_group.add_argument(
-        "--team-ids",
-        type=_parse_team_ids,
-        help="Backfill a comma-separated list of configured MLB team IDs.",
-    )
-
-    parser.add_argument(
-        "--start-index",
-        type=int,
-        help=(
-            "One-based first team index in macroservice.teams.TEAMS. "
-            "Use with --end-index to resume a chunk of the 30-team job."
-        ),
-    )
-    parser.add_argument(
-        "--end-index",
-        type=int,
-        help=(
-            "One-based inclusive final team index in macroservice.teams.TEAMS. "
-            "Defaults to the final configured team."
-        ),
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print selected teams without calling the MLB API or Neon.",
-    )
-
-    args = parser.parse_args()
-
-    if (args.start_index is not None or args.end_index is not None) and (
-        args.team_id is not None or args.team_ids is not None
-    ):
-        parser.error(
-            "--start-index/--end-index cannot be combined with "
-            "--team-id or --team-ids."
-        )
-
-    try:
-        team_ids = _selected_team_ids(args)
-    except ValueError as exc:
-        parser.error(str(exc))
-
-    if not team_ids:
-        parser.error("No teams were selected.")
-
-    print(
-        f"Selected {len(team_ids)} configured team(s): "
-        + ", ".join(str(team_id) for team_id in team_ids),
-        flush=True,
-    )
-
-    if args.dry_run:
-        backfill(None, team_ids, dry_run=True)
-        return 0
-
-    load_dotenv()
-    database_url = db.resolve_database_url()
-    if not database_url:
-        print(
-            "No database connection string found -- set DATABASE_URL "
-            "(environment or .env), or configure "
-            "[connections.postgresql].url in .streamlit/secrets.toml.",
-            file=sys.stderr,
-        )
-        return 2
-
-    engine = create_engine(database_url)
-    db.ensure_schema(engine)
-
-    failures = backfill(engine, team_ids)
-
-    succeeded = len(team_ids) - len(failures)
-    print(
-        f"\n{succeeded}/{len(team_ids)} selected team(s) roster-backfilled.",
-        flush=True,
-    )
-
-    if failures:
-        print(
-            "Failed: " + ", ".join(str(team_id) for team_id, _ in failures),
-            file=sys.stderr,
-        )
-        return 1
-
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+          python scripts/backfill_roster_history.py "${args[@]}"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
