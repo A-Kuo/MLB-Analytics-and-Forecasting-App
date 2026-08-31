@@ -1,11 +1,12 @@
 # MLB Baseball Metrics and Telemetry Analytics and Forecasting Pipeline/Dashboard
 ⚾ A full-stack MLB analytics platform that ingests public sports data into a PostgreSQL cache, powers interactive player and leaderboard analysis, and evaluates time-series forecasting models with rolling features and leakage-aware validation.
 
-[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor&style=plastic)](https://www.python.org/downloads/release/python-3120/)
-[![App](https://img.shields.io/badge/Fullstack-FFFFFF?logo=Ubuntu&style=plastic)](https://ubuntu.com/ai/data-science)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-FFFFFF?logo=postgresql&style=plastic&logoColor=Blue)](https://www.postgresql.org/docs/18/index.html)
-[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-FFFFFF?logo=githubactions&style=plastic)](https://github.com/features/actions)
-[![Tests](https://img.shields.io/badge/pytest-white?logo=pytest&style=plastic)](https://docs.pytest.org/)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-blue?logo=python&logoColor&style=plastic&logoColor=blue)](https://www.python.org/downloads/release/python-3120/)
+[![App](https://img.shields.io/badge/Fullstack-Ubuntu-orange?logo=Ubuntu&style=plastic)](https://ubuntu.com/ai/data-science)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.6-608CC4?&logoColor=608CC4&logo=postgresql&style=plastic)](https://www.postgresql.org/docs/18/index.html)
+<!--[![Neon](https://img.shields.io/badge/Neon-1.9-orange?logo=scikit-learn&style=plastic)](https://scikit-learn.org/stable/whats_new/v1.9.html)-->
+[![Scikit-Learn](https://img.shields.io/badge/ScikitLearn-1.9-orange?logo=scikit-learn&style=plastic)](https://scikit-learn.org/stable/whats_new/v1.9.html)
+[![Tests](https://img.shields.io/badge/pytest-9.1-41C3F0?logo=pytest&style=plastic&logoColor=41C3F0)](https://docs.pytest.org/)
 
 ---
 
