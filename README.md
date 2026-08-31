@@ -4,8 +4,8 @@
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](#)
 [![App](https://img.shields.io/badge/Fullstack-FF4B4B?logo=Ubuntu&logoColor=white)](#)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](#)
-[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-ETL_automation-2088FF?logo=githubactions&logoColor=white)](#)
-[![Tests](https://img.shields.io/badge/tests-pytest-success)](#)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](#)
+[![Tests](https://img.shields.io/badge/pytest-success?logo=pytest&logoColor=white)](#)
 
 ---
 
