@@ -1,36 +1,67 @@
-name: Backfill roster and season history
+name: Backfill roster history (On Demand)
 
-# Roster history (debuts, retirements, trades) changes only a few times a
-# year, so a monthly refresh is plenty -- workflow_dispatch covers anything
-# more urgent, like right after the trade deadline.
+# Roster history changes infrequently, so the normal all-time refresh runs
+# monthly. workflow_dispatch allows targeted historical year ranges or one
+# team to be refreshed manually.
 on:
   schedule:
     - cron: "0 8 1 * *"
-  workflow_dispatch: {}
+
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "Optional inclusive first season to process, e.g. 1901"
+        required: false
+        default: ""
+        type: string
+      end_year:
+        description: "Optional inclusive final season to process, e.g. 2022"
+        required: false
+        default: ""
+        type: string
+      team_id:
+        description: "Optional MLB team ID; leave blank to process all teams"
+        required: false
+        default: ""
+        type: string
+
+concurrency:
+  group: roster-history-backfill
+  cancel-in-progress: false
 
 jobs:
   backfill:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          
-      - run: pip install -r requirements-backfill.txt
-      
-      # --- EXISTING STEP ---
-      - name: Backfill roster history
-        run: python scripts/backfill_roster_history.py
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          cache: "pip"
 
-      # --- NEW STEP: Backfill seasons 1901-2022 ---
-      - name: Backfill season leaderboard (1901-2022)
+      - name: Install backfill dependencies
+        run: pip install -r requirements-backfill.txt
+
+      - name: Backfill roster history
+        shell: bash
         run: |
-          for year in $(seq 1901 2022); do
-            python scripts/backfill_season_leaderboard.py --season $year
-          done
+          args=()
+
+          if [ -n "${{ inputs.start_year }}" ]; then
+            args+=(--start-year "${{ inputs.start_year }}")
+          fi
+
+          if [ -n "${{ inputs.end_year }}" ]; then
+            args+=(--end-year "${{ inputs.end_year }}")
+          fi
+
+          if [ -n "${{ inputs.team_id }}" ]; then
+            args+=(--team-id "${{ inputs.team_id }}")
+          fi
+
+          python scripts/backfill_roster_history.py "${args[@]}"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
