@@ -1,3 +1,5 @@
+name: Backfill Roster History (On-Demand)
+
 """Populate the PostgreSQL all-time roster-history cache from the MLB Stats API.
 
 The roster-history cache stores franchise-level player membership and player
