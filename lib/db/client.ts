@@ -1,36 +1,18 @@
-import { neon } from "@neondatabase/serverless";
+import { Pool } from '@neondatabase/serverless';
 
-const databaseUrl = process.env.DATABASE_URL;
+let pool: Pool | null = null;
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is not configured.");
+export function getPool() {
+  if (!pool) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL is not set in the environment");
+    }
+    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  }
+  return pool;
 }
 
-export const sql = neon(databaseUrl);
-
-
-/* 
-
-allows for server side route:
-
-import { sql } from "@/lib/db/client";
-
-export async function getTeamNews(teamIds: number[], days: number, limit: number) {
-  return sql`
-    SELECT
-      team_id,
-      source,
-      priority,
-      headline,
-      thumbnail,
-      link,
-      published_at
-    FROM team_news
-    WHERE team_id = ANY(${teamIds})
-      AND published_at >= NOW() - make_interval(days => ${days})
-    ORDER BY published_at DESC, priority ASC
-    LIMIT ${limit};
-  `;
+export async function query(text: string, params?: any[]) {
+  const p = getPool();
+  return p.query(text, params);
 }
-
-*/
