@@ -1,4 +1,4 @@
-name: Backfill roster history
+name: Backfill roster history (On Demand)
 
 # Roster history changes infrequently, so the normal all-time refresh runs
 # monthly. workflow_dispatch allows targeted historical year ranges or one
