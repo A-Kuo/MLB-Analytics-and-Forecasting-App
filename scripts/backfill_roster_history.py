@@ -46,35 +46,37 @@ def backfill(engine, team_ids: list[int]) -> list[tuple[int, Exception]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    # parser.add_argument("--team-id", type=int, help="Backfill only this team (default: all 30)")
+    parser.add_argument(
+        "--start-year",
+        type=int,
+        help=(
+            "Optional workflow scope label. Roster membership remains an "
+            "all-time franchise cache; timeline filtering occurs in the app."
+        ),
+    )
+    parser.add_argument(
+        "--end-year",
+        type=int,
+        help=(
+            "Optional workflow scope label. Roster membership remains an "
+            "all-time franchise cache; timeline filtering occurs in the app."
+        ),
+    )
     args = parser.parse_args()
 
-    load_dotenv()
-    database_url = db.resolve_database_url()
-    if not database_url:
+    if (args.start_year is None) != (args.end_year is None):
+        parser.error("--start-year and --end-year must be supplied together.")
+
+    if args.start_year is not None and args.start_year > args.end_year:
+        parser.error("--start-year cannot be later than --end-year.")
+
+    if args.start_year is not None:
         print(
-            "No database connection string found -- set DATABASE_URL (environment or .env), "
-            "or configure [connections.postgresql].url in .streamlit/secrets.toml.",
-            file=sys.stderr,
+            f"Requested workflow range: {args.start_year}-{args.end_year}. "
+            "The roster-history cache remains all-time; the range does not "
+            "filter persisted franchise membership.",
+            flush=True,
         )
-        return 2
-
-    # team_ids = [args.team_id] if args.team_id else [team["id"] for team in teams.TEAMS]
-    team_ids = [team["id"] for team in teams.TEAMS]
-
-    engine = create_engine(database_url)
-    db.ensure_schema(engine)
-    failures = backfill(engine, team_ids)
-
-    succeeded = len(team_ids) - len(failures)
-    print(f"\n{succeeded}/{len(team_ids)} teams backfilled.")
-    if failures:
-        # Non-zero exit so a scheduled CI run surfaces as failed even when
-        # most teams succeeded -- a silent partial refresh is worse than a
-        # visible one.
-        print("Failed: " + ", ".join(str(team_id) for team_id, _ in failures), file=sys.stderr)
-        return 1
-    return 0
 
 
 if __name__ == "__main__":
