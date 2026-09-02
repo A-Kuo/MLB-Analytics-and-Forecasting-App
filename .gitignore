@@ -31,3 +31,4 @@ next-env.d.ts
 # Repomix output file -- this is a generated file that is not part of the source code.
 repomix-output.xml
 AGENT.MD
+AGENTS.md

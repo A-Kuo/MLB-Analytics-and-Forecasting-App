@@ -13,10 +13,12 @@ team in the lookback window), not a transient failure worth retrying live.
 """
 from __future__ import annotations
 
+from psycopg.rows import dict_row
+
 from sqlalchemy import Engine, text
 
 _FETCH_SQL = text("""
-    SELECT team_id, source, headline, thumbnail, link, published_at
+    SELECT id, team_id, source, headline, thumbnail, link, published_at
     FROM team_news
     WHERE team_id = ANY(:team_ids) AND published_at >= now() - make_interval(days => :days)
     ORDER BY priority ASC, published_at DESC

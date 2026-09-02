@@ -1,27 +1,41 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------
- * Design tokens, transcribed 1:1 from DESIGN.md's YAML front matter.
- * "Notion Sans" in DESIGN.md is Notion's own proprietary branded font,
- * not something this project can license/embed -- DESIGN.md itself names
- * the real basis (Inter), so --font-sans below is aliased to the Inter
- * variable font loaded in app/layout.tsx via next/font/google. The token
- * NAME stays "sans" (not "notion-sans") since nothing here is actually
- * Notion's font file.
+ * Design tokens. Originally transcribed 1:1 from DESIGN.md's YAML front
+ * matter (a light, Notion-inspired palette) -- since superseded by a
+ * charcoal + MLB red/blue theme, ported to match the Streamlit app's
+ * .streamlit/config.toml exactly (background #1a1a1a, secondary surface
+ * #2d2d2d, text #e0e0e0, MLB red #BD3039, MLB navy #002D72, a lighter
+ * #6699cc for link hover since navy is unreadable on a dark background --
+ * see app.py's own comment on that). Token NAMES are kept from the
+ * original light theme (canvas/surface/ink/hairline/etc.) so nothing
+ * referencing them needs renaming -- only the values changed, to dark-mode
+ * equivalents. "Notion Sans" in DESIGN.md is Notion's own proprietary
+ * branded font, not something this project can license/embed -- DESIGN.md
+ * itself names the real basis (Inter), so --font-sans below is aliased to
+ * the Inter variable font loaded in app/layout.tsx via next/font/google.
  * ------------------------------------------------------------------- */
 @theme {
   --font-sans: var(--font-inter), Inter, -apple-system, system-ui, "Segoe UI", Helvetica, sans-serif;
 
-  /* colors.* */
-  --color-primary: #5645d4;
-  --color-primary-pressed: #4534b3;
-  --color-primary-deep: #3a2a99;
+  /* MLB brand colors -- the actual source of truth for the theme */
+  --color-mlb-red: #bd3039;
+  --color-mlb-red-hover: #9a2530;
+  --color-mlb-navy: #002d72;
+  --color-mlb-link: #e0e0e0;
+  --color-mlb-link-hover: #6699cc;
+
+  /* colors.* -- names kept from the original light theme, values ported
+     to the charcoal theme above */
+  --color-primary: var(--color-mlb-navy);
+  --color-primary-pressed: #001d4d;
+  --color-primary-deep: #001333;
   --color-on-primary: #ffffff;
-  --color-brand-navy: #0a1530;
-  --color-brand-navy-deep: #070f24;
-  --color-brand-navy-mid: #1a2a52;
-  --color-link-blue: #0075de;
-  --color-link-blue-pressed: #005bab;
+  --color-brand-navy: var(--color-mlb-navy);
+  --color-brand-navy-deep: #001d4d;
+  --color-brand-navy-mid: #001f52;
+  --color-link-blue: var(--color-mlb-link);
+  --color-link-blue-pressed: var(--color-mlb-link-hover);
   --color-brand-orange: #dd5b00;
   --color-brand-orange-deep: #793400;
   --color-brand-pink: #ff64c8;
@@ -42,19 +56,19 @@
   --color-card-tint-yellow-bold: #f9e79f;
   --color-card-tint-cream: #f8f5e8;
   --color-card-tint-gray: #f0eeec;
-  --color-canvas: #ffffff;
-  --color-surface: #f6f5f4;
-  --color-surface-soft: #fafaf9;
-  --color-hairline: #e5e3df;
-  --color-hairline-soft: #ede9e4;
-  --color-hairline-strong: #c8c4be;
-  --color-ink-deep: #000000;
-  --color-ink: #1a1a1a;
-  --color-charcoal: #37352f;
-  --color-slate: #5d5b54;
-  --color-steel: #787671;
-  --color-stone: #a4a097;
-  --color-muted: #bbb8b1;
+  --color-canvas: #1a1a1a;
+  --color-surface: #2d2d2d;
+  --color-surface-soft: #242424;
+  --color-hairline: #3d3d3d;
+  --color-hairline-soft: #333333;
+  --color-hairline-strong: #4d4d4d;
+  --color-ink-deep: #ffffff;
+  --color-ink: #e0e0e0;
+  --color-charcoal: #cfcfcf;
+  --color-slate: #b0b0b0;
+  --color-steel: #8a8a8a;
+  --color-stone: #6e6e6e;
+  --color-muted: #555555;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: #a4a097;
   --color-semantic-success: #1aae39;
@@ -190,4 +204,13 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/* Links: light grey by default (readable on charcoal), MLB blue as a hover
+   highlight -- matches app.py's identical rule and reasoning. */
+a {
+  color: var(--color-mlb-link);
+}
+a:hover {
+  color: var(--color-mlb-link-hover);
 }

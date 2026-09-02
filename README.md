@@ -213,9 +213,11 @@ flowchart LR
     DOMAIN -. Statcast retrieval .-> SAVANT
 ```
 
-### Neon PostgreSQL datastore
+### Neon PostgreSQL datastore (Native Migration Completed)
 
 Neon PostgreSQL acts as a domain-specific MLB analytics datastore rather than an enterprise-scale data lake. It stores curated, relational data needed by the application, including player biographies, roster history, team-season associations, player season statistics, Statcast aggregates, leaderboard inputs, and team-news records.
+
+> **Note**: The Postgres native migration has been completed. The application layer now queries the Neon PostgreSQL database directly via serverless Edge functions (Next.js/Vercel), replacing the legacy Python middleware ORM for client-facing data requests.
 
 The database is designed for application-serving and analytical queries rather than raw file retention. Backfill jobs and lazy cache warming persist data through idempotent upserts, making partial jobs safe to retry.
 

@@ -312,17 +312,48 @@ def render_dashboard_panel(
         "Scrubbers 1 and 2 mirror the season range above (read-only) and mark "
         "the training window; drag scrubber 3 to set how far out to forecast."
     )
+    # Disabled sliders, not number_inputs -- both match Timeline's own
+    # st.slider so "scrubber" means the same thing in both places.
+    #
+    # Each widget's session_state is force-written to the live perf_start/
+    # perf_end value immediately before the widget call, every rerun --
+    # required despite `value=` being passed too, because once a *keyed*
+    # widget has rendered once, Streamlit treats its session_state entry
+    # (not a later `value=` argument) as the source of truth on every
+    # subsequent rerun. Without this forced write, a keyed disabled slider
+    # freezes at whatever value it was FIRST created with and silently
+    # ignores `value=` from then on -- confirmed directly (an AppTest
+    # reproduction showed the underlying train_end plumbing passed to the
+    # forecast fit was already correct; only these *display* mirrors were
+    # stale, which is exactly the "training end always shows 2026" symptom
+    # reported). A `key` can't just be dropped to dodge this: two of these
+    # panels render side by side (see render_dashboard_panel's key_prefix),
+    # and two keyless widgets created with identical arguments -- which
+    # happens whenever both panels' Timelines coincide, e.g. both still at
+    # their untouched full-range default -- raise StreamlitDuplicateElementId
+    # (confirmed directly too).
     mirror_start_col, mirror_end_col = st.columns(2)
-    mirror_start_col.number_input(
-        "Scrubber 1 (train start)", value=perf_start, disabled=True, key=k(key_prefix, "forecast_mirror_start")
+    mirror_start_key = k(key_prefix, "forecast_mirror_start")
+    mirror_end_key = k(key_prefix, "forecast_mirror_end")
+    st.session_state[mirror_start_key] = perf_start
+    st.session_state[mirror_end_key] = perf_end
+    mirror_start_col.slider(
+        "Scrubber 1 (train start)",
+        min_value=EARLIEST_SEASON,
+        max_value=current_season,
+        disabled=True,
+        key=mirror_start_key,
     )
-    mirror_end_col.number_input(
-        "Scrubber 2 (train end)", value=perf_end, disabled=True, key=k(key_prefix, "forecast_mirror_end")
+    mirror_end_col.slider(
+        "Scrubber 2 (train end)",
+        min_value=EARLIEST_SEASON,
+        max_value=current_season,
+        disabled=True,
+        key=mirror_end_key,
     )
 
     # Forecast's own training-end value, forced to always equal Timeline's
-    # scrubber 2 exactly -- the two number_inputs above were display-only
-    # mirrors and never actually fed the forecast call below.
+    # scrubber 2 exactly.
     forecast_train_end = perf_end
 
     forecast_end = pushed_year_control(
