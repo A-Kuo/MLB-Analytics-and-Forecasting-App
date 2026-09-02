@@ -41,7 +41,7 @@ export async function getInsightsLeaderboard(metricKey: string, group: string, s
 
   // Use string concatenation for table and column, which is safe since we got them from our own registry
   const sql = `
-    SELECT DISTINCT p.id AS player_id, p.name, p.debut_year, p.last_active_year, p.active,
+    SELECT DISTINCT p.id::int AS player_id, p.name, p.debut_year, p.last_active_year, p.active,
            m.${column} AS metric_value
     FROM ${table} m
     JOIN player_season_team pst ON pst.player_id = m.player_id AND pst.season = m.season

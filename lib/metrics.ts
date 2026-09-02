@@ -64,6 +64,32 @@ export function fullNameForMetric(key: string): string {
   return METRIC_FULL_NAMES[key] ?? key;
 }
 
+// Verified against the live utils.filters.RATE_METRICS set -- deliberately
+// excludes avgExitVelocity/avgVelocity (see lib/db/analytics.ts's longer
+// comment on why, and that this looks like an unintentional upstream
+// quirk preserved for faithful parity). Used for both chart axis-splitting
+// (chart.py's build_multi_metric_figure/build_forecast_figure) and
+// aggregation sum-vs-mean (lib/db/analytics.ts) -- the same set serves
+// both in Python too (utils.filters.is_rate_metric).
+export const RATE_METRICS = new Set([
+  "avg",
+  "obp",
+  "slg",
+  "ops",
+  "era",
+  "whip",
+  "xba",
+  "hardHitPct",
+  "barrelPct",
+  "cswPct",
+  "whiffPct",
+  "chasePct",
+]);
+
+export function isRateMetric(key: string): boolean {
+  return RATE_METRICS.has(key);
+}
+
 const LEADING_ZERO_DROPPED = new Set(["avg", "obp", "slg", "ops", "xba"]);
 const TWO_DECIMAL = new Set(["era", "whip", "strikeoutsPer9Inn", "walksPer9Inn", "fip"]);
 const PERCENT = new Set(["hardHitPct", "barrelPct", "cswPct", "whiffPct", "chasePct"]);

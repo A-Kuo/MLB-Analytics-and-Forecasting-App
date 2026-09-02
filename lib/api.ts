@@ -11,6 +11,10 @@
  * to that rather than duplicating the same three reads through Python too.
  */
 
+import type { RosterEntry } from "@/lib/roster";
+
+export type { RosterEntry } from "@/lib/roster";
+
 // Mirrors macroservice/teams.py's TEAM_NEWS_HUB_SLUGS -- duplicated here
 // (rather than round-tripping through Python) since lib/db/teams.ts reads
 // teams.json directly and has no news_hub_url field of its own. Falls back
@@ -87,6 +91,11 @@ export interface NewsItem {
   published_at: string | null;
 }
 
+export interface AggregateSeries {
+  years: number[];
+  values: number[];
+}
+
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`/api${path}`);
   if (!res.ok) {
@@ -130,5 +139,84 @@ export async function getTeamNews(
   if (teamIds.length === 0) return [];
   const params = new URLSearchParams({ teamIds: teamIds.join(","), days: String(days), limit: String(limit) });
   const { data } = await apiFetch<{ data: NewsItem[] }>(`/news?${params}`);
+  return data;
+}
+
+export async function getTeamRoster(teamId: number): Promise<RosterEntry[]> {
+  const { data } = await apiFetch<{ data: RosterEntry[] }>(`/roster?teamId=${teamId}`);
+  return data;
+}
+
+export async function getAggregateKpi(
+  playerIds: readonly number[],
+  metric: string,
+  group: "hitting" | "pitching",
+  startYear: number,
+  endYear: number,
+): Promise<number | null> {
+  const params = new URLSearchParams({
+    playerIds: playerIds.join(","),
+    metric,
+    group,
+    startYear: String(startYear),
+    endYear: String(endYear),
+  });
+  const { data } = await apiFetch<{ data: number | null }>(`/analytics/kpi?${params}`);
+  return data;
+}
+
+export interface ForecastPayload {
+  years: number[];
+  forecast: (number | null)[];
+  ci_lower: (number | null)[];
+  ci_upper: (number | null)[];
+  actual: (number | null)[];
+  metric_label: string;
+}
+
+/**
+ * Routes to the Python function (macroservice/api.py's /forecast/aggregate,
+ * via vercel.json's /api/:path* rewrite) -- the one Analytics-page feature
+ * that isn't a plain-SQL Node route. Fitting an SVR+Huber+GaussianProcess
+ * ensemble has no faithful JS equivalent, and it must run fresh for
+ * whatever arbitrary player combination is selected, so it can't be
+ * precomputed the way KPI/Trend can. The endpoint itself still minimizes
+ * latency by reading training data Postgres-first (see api.py's
+ * _get_player_series) rather than always hitting the live MLB API.
+ */
+export async function getAggregateForecast(
+  playerIds: readonly number[],
+  metric: string,
+  group: "hitting" | "pitching",
+  trainStart: number,
+  trainEnd: number,
+  forecastEnd: number,
+): Promise<ForecastPayload> {
+  const params = new URLSearchParams({
+    playerIds: playerIds.join(","),
+    metric,
+    group,
+    trainStart: String(trainStart),
+    trainEnd: String(trainEnd),
+    forecastEnd: String(forecastEnd),
+  });
+  return apiFetch<ForecastPayload>(`/forecast/aggregate?${params}`);
+}
+
+export async function getAggregateSeries(
+  playerIds: readonly number[],
+  metric: string,
+  group: "hitting" | "pitching",
+  startYear: number,
+  endYear: number,
+): Promise<AggregateSeries> {
+  const params = new URLSearchParams({
+    playerIds: playerIds.join(","),
+    metric,
+    group,
+    startYear: String(startYear),
+    endYear: String(endYear),
+  });
+  const { data } = await apiFetch<{ data: AggregateSeries }>(`/analytics/series?${params}`);
   return data;
 }

@@ -17,7 +17,7 @@ import streamlit as st
 
 from macroservice import insights_db, news_db, players, roster_history, roster_history_db, season_stats_db, statcast_season, teams, trajectories
 from utils.aggregation import aggregate_scalar, aggregate_series
-from utils.filters import STATCAST_METRIC_KEYS, is_rate_metric
+from utils.filters import STATCAST_METRIC_KEYS, is_mean_aggregated
 
 logger = logging.getLogger(__name__)
 
@@ -335,7 +335,7 @@ def get_aggregate_kpi(player_ids: tuple[int, ...], metric: str, group: str, star
     or an entire team roster is selected.
     """
     series_by_player = {pid: get_unified_series(pid, metric, group, start_year, end_year) for pid in player_ids}
-    return aggregate_scalar(series_by_player, is_rate_metric(metric))
+    return aggregate_scalar(series_by_player, is_mean_aggregated(metric))
 
 
 @st.cache_data(ttl=60)
@@ -345,7 +345,7 @@ def get_aggregate_series(player_ids: tuple[int, ...], metric: str, group: str, s
     player, for the Performance Trend chart.
     """
     series_by_player = {pid: get_unified_series(pid, metric, group, start_year, end_year) for pid in player_ids}
-    return aggregate_series(series_by_player, is_rate_metric(metric))
+    return aggregate_series(series_by_player, is_mean_aggregated(metric))
 
 
 @st.cache_data(ttl=300)
@@ -358,7 +358,7 @@ def get_aggregate_forecast(
     (already parameterized over "how do I get the series" for exactly
     this reason).
     """
-    is_rate = is_rate_metric(metric)
+    is_rate = is_mean_aggregated(metric)
 
     def get_series(series_metric: str, series_group: str, start_year: int, end_year: int) -> dict:
         series_by_player = {

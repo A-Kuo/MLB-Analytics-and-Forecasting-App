@@ -91,10 +91,23 @@ METRIC_FULL_NAMES: dict[str, str] = {
 
 # Rate stats sit on a 0-ish to low-single-digit scale; counting stats run to
 # the hundreds. Plotting both against one y-axis flattens the rate lines into
-# the baseline, so the trend chart splits them across two axes.
+# the baseline, so the trend chart splits them across two axes. This is a
+# CHART-AXIS set, not an aggregation-math set -- see MEAN_AGGREGATE_METRICS
+# below for the (different) set that decides sum-vs-mean.
 RATE_METRICS: frozenset[str] = frozenset(
     {"avg", "obp", "slg", "ops", "era", "whip"} | _STATCAST_RATE_METRICS
 )
+
+# Metrics that should be MEAN-combined across (player, year) points when
+# aggregating a multi-player/multi-year selection (utils.aggregation),
+# rather than summed. This is RATE_METRICS plus avgExitVelocity/avgVelocity:
+# those two are deliberately excluded from RATE_METRICS (they'd flatten
+# against a 0-1 rate axis on the trend chart -- see that set's comment),
+# but they're still per-player averages, not counts, so summing them across
+# a multi-season selection produces a meaningless total (e.g. "858 mph" for
+# one player's decade of seasons, previously a live bug -- confirmed via
+# direct reproduction against the Neon-backed aggregate-KPI path).
+MEAN_AGGREGATE_METRICS: frozenset[str] = RATE_METRICS | {"avgExitVelocity", "avgVelocity"}
 
 
 def stat_group_for_position(position_abbr: str) -> str:
@@ -112,3 +125,7 @@ def full_name_for_metric(key: str) -> str:
 
 def is_rate_metric(key: str) -> bool:
     return key in RATE_METRICS
+
+
+def is_mean_aggregated(key: str) -> bool:
+    return key in MEAN_AGGREGATE_METRICS

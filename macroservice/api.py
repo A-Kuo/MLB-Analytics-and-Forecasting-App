@@ -12,10 +12,12 @@ from __future__ import annotations
 from functools import lru_cache
 
 from fastapi import FastAPI, HTTPException, Query
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.pool import NullPool
 
 from macroservice import db, insights_db, news, news_db, players, statcast, teams, trajectories
+from utils.aggregation import aggregate_scalar, aggregate_series
+from utils.filters import is_mean_aggregated
 
 app = FastAPI(title="MLB Macroservice", version="1.0.0")
 
@@ -175,6 +177,127 @@ def insights_leaderboard(
 
     engine = _require_db_engine()
     return insights_db.top_players_by_metric(engine, metric_key, group, season, parsed_ids, limit)
+
+
+# metric key -> (table, column) -- same mapping as lib/db/analytics.ts's
+# registries (kept in sync manually; see that file's own comment).
+_HITTING_COLUMNS: dict[str, tuple[str, str]] = {
+    "avg": ("player_season_hitting_stats", "avg"),
+    "obp": ("player_season_hitting_stats", "obp"),
+    "slg": ("player_season_hitting_stats", "slg"),
+    "ops": ("player_season_hitting_stats", "ops"),
+    "homeRuns": ("player_season_hitting_stats", "home_runs"),
+    "rbi": ("player_season_hitting_stats", "rbi"),
+    "strikeOuts": ("player_season_hitting_stats", "strikeouts"),
+    "baseOnBalls": ("player_season_hitting_stats", "walks"),
+    "xba": ("player_statcast_hitting_season", "xba"),
+    "avgExitVelocity": ("player_statcast_hitting_season", "avg_exit_velocity"),
+    "hardHitPct": ("player_statcast_hitting_season", "hard_hit_pct"),
+    "barrelPct": ("player_statcast_hitting_season", "barrel_pct"),
+}
+_PITCHING_COLUMNS: dict[str, tuple[str, str]] = {
+    "era": ("player_season_pitching_stats", "era"),
+    "whip": ("player_season_pitching_stats", "whip"),
+    "strikeOuts": ("player_season_pitching_stats", "strikeouts"),
+    "baseOnBalls": ("player_season_pitching_stats", "walks"),
+    "inningsPitched": ("player_season_pitching_stats", "innings_pitched"),
+    "earnedRuns": ("player_season_pitching_stats", "earned_runs"),
+    "cswPct": ("player_statcast_pitching_season", "csw_pct"),
+    "whiffPct": ("player_statcast_pitching_season", "whiff_pct"),
+    "chasePct": ("player_statcast_pitching_season", "chase_pct"),
+    "avgVelocity": ("player_statcast_pitching_season", "avg_velocity"),
+}
+
+
+def _get_player_series(player_id: int, metric: str, group: str, start_year: int, end_year: int, engine: Engine | None) -> dict:
+    """One bulk range query per player/metric -- Postgres-only, no live-API
+    fallback, matching lib/db/analytics.ts's approach exactly (and Insights'
+    own Postgres-only convention). A per-year loop with a live-API fallback
+    on every miss was the original approach here; for the wide default
+    range this page starts with (EARLIEST_SEASON..current year, ~125
+    seasons), that meant up to ~125 live MLB Stats API calls for a single
+    player -- confirmed directly to hang for well over a minute. A season
+    genuinely not yet in Postgres is treated as "no data for that year"
+    rather than fetched live, the same tradeoff Insights leaderboards
+    already make for the same reason.
+    """
+    if engine is None:
+        return {"years": [], "values": []}
+    columns = _PITCHING_COLUMNS if group == "pitching" else _HITTING_COLUMNS
+    table, column = columns[metric]
+    sql = text(f"""
+        SELECT season, {column} AS value
+        FROM {table}
+        WHERE player_id = :player_id AND season BETWEEN :start_year AND :end_year AND {column} IS NOT NULL
+        ORDER BY season
+    """)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                sql, {"player_id": player_id, "start_year": start_year, "end_year": end_year}
+            ).mappings().all()
+    except Exception:
+        return {"years": [], "values": []}
+    return {"years": [row["season"] for row in rows], "values": [row["value"] for row in rows]}
+
+
+@app.get("/analytics/kpi")
+def aggregate_kpi(
+    player_ids: str = Query(..., alias="playerIds"),
+    metric: str = Query(...),
+    group: str = Query(..., pattern="^(hitting|pitching)$"),
+    start_year: int = Query(..., alias="startYear"),
+    end_year: int = Query(..., alias="endYear"),
+) -> dict:
+    """Fallback/reference implementation of the aggregate KPI -- the
+    Next.js frontend's primary path is the pure-SQL lib/db/analytics.ts
+    (one aggregate query, no per-player Python loop), kept for parity and
+    any non-Vercel consumer of this standalone API.
+    """
+    try:
+        engine = _db_engine()
+    except RuntimeError:
+        engine = None
+    ids = [int(pid) for pid in player_ids.split(",") if pid.strip()]
+    series_by_player = {pid: _get_player_series(pid, metric, group, start_year, end_year, engine) for pid in ids}
+    return {"value": aggregate_scalar(series_by_player, is_mean_aggregated(metric))}
+
+
+@app.get("/forecast/aggregate")
+def aggregate_forecast(
+    player_ids: str = Query(..., alias="playerIds"),
+    metric: str = Query(...),
+    group: str = Query(..., pattern="^(hitting|pitching)$"),
+    train_start: int = Query(..., alias="trainStart"),
+    train_end: int = Query(..., alias="trainEnd"),
+    forecast_end: int = Query(..., alias="forecastEnd"),
+) -> dict:
+    """Aggregate multi-player forecast -- fits the same SVR+Huber+Gaussian
+    Process ensemble Streamlit uses (trajectories.compute_forecast_from_series),
+    combining every selected player's own series first (sum for counting
+    stats, mean for rate stats -- utils.aggregation.aggregate_series).
+
+    This is the one Analytics-page feature that can't be a pure-SQL
+    Next.js route like KPI/Trend: the regression ensemble has no faithful
+    JS equivalent, and it must fit fresh for whatever arbitrary player
+    combination is currently selected, not a fixed, precomputable subject.
+    The latency lever here is avoiding N live MLB API calls for training
+    data that's already cached -- see _get_player_season_stat -- rather
+    than avoiding the fit itself.
+    """
+    try:
+        engine = _db_engine()
+    except RuntimeError:
+        engine = None
+    ids = [int(pid) for pid in player_ids.split(",") if pid.strip()]
+
+    def get_series(series_metric: str, series_group: str, start_year: int, end_year: int) -> dict:
+        series_by_player = {
+            pid: _get_player_series(pid, series_metric, series_group, start_year, end_year, engine) for pid in ids
+        }
+        return aggregate_series(series_by_player, is_mean_aggregated(series_metric))
+
+    return trajectories.compute_forecast_from_series(get_series, metric, group, train_start, train_end, forecast_end)
 
 
 @app.get("/players/{player_id}/hitter-trajectory")
