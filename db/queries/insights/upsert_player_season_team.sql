@@ -6,11 +6,11 @@ INSERT INTO player_season_team (
     is_pitcher
 )
 VALUES (
-    %(player_id)s,
-    %(team_id)s,
-    %(season)s,
-    %(position)s,
-    %(is_pitcher)s
+    :player_id,
+    :team_id,
+    :season,
+    :position,
+    :is_pitcher
 )
 ON CONFLICT (player_id, team_id, season)
 DO UPDATE SET

@@ -5,10 +5,10 @@ INSERT INTO roster_stints (
     is_pitcher
 )
 VALUES (
-    %(team_id)s,
-    %(player_id)s,
-    %(positions)s,
-    %(is_pitcher)s
+    :team_id,
+    :player_id,
+    :positions,
+    :is_pitcher
 )
 ON CONFLICT (team_id, player_id)
 DO UPDATE SET

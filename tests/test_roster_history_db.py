@@ -146,9 +146,13 @@ def test_upsert_stint_params_carry_team_id_and_positions():
 
 
 def test_upsert_is_idempotent_via_on_conflict_clauses():
+    # Whitespace-normalized: the SQL now loads from db/queries/roster_history/
+    # *.sql (see macroservice/sql.load_query), formatted as a readable
+    # multi-line file rather than a single-line inline string -- same
+    # ON CONFLICT clause, just not literally on one line anymore.
     engine, conn = _writable_engine()
     roster_history_db.upsert_team_roster(engine, 147, _ROSTER)
-    statements = [str(call[0][0]) for call in conn.execute.call_args_list]
+    statements = [" ".join(str(call[0][0]).split()) for call in conn.execute.call_args_list]
     assert "ON CONFLICT (id) DO UPDATE" in statements[0]
     assert "ON CONFLICT (team_id, player_id) DO UPDATE" in statements[1]
 

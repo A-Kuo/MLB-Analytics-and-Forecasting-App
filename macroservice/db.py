@@ -13,12 +13,11 @@ import os
 import tomllib
 from pathlib import Path
 
-from psycopg.rows import dict_row
-
 from sqlalchemy import Engine, text
 
 _REPO_ROOT = Path(__file__).parent.parent
 SCHEMA_PATH = _REPO_ROOT / "db" / "schema.sql"
+MIGRATIONS_DIR = _REPO_ROOT / "db" / "migrations"
 SECRETS_PATH = _REPO_ROOT / ".streamlit" / "secrets.toml"
 
 
@@ -85,3 +84,54 @@ def ensure_schema(engine: Engine) -> None:
     """
     with engine.begin() as conn:
         conn.execute(text(SCHEMA_PATH.read_text()))
+
+
+def apply_migrations(engine: Engine) -> list[str]:
+    """Applies every db/migrations/NNN_*.sql file not yet recorded in
+    schema_migrations, in filename order, each in its own transaction.
+
+    This is the versioned-migration counterpart to ensure_schema() above
+    (which stays as the simple "re-apply the one monolithic schema.sql"
+    path both currently use) -- db/migrations/ splits the same schema into
+    numbered, individually-tracked steps, matching db/queries/'s per-domain
+    file layout. Every statement in every migration is idempotent
+    (CREATE TABLE/INDEX/VIEW ... IF NOT EXISTS or CREATE OR REPLACE VIEW),
+    so this is safe to run against the already-populated live database --
+    confirmed directly, not just by inspection.
+
+    001_initial_schema.sql creates schema_migrations itself, so the "which
+    migrations are already applied" check can't run before at least that
+    file has been applied once; each migration is looked up individually
+    (not loaded as one batch) specifically so this bootstraps cleanly on
+    both a fresh database and one only ensure_schema() has ever touched
+    (where schema_migrations doesn't exist yet, but every table does).
+
+    Returns the list of migration versions (filename stems) actually
+    applied this call -- empty when everything was already up to date.
+    """
+    applied: list[str] = []
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version TEXT PRIMARY KEY,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+        )
+
+    for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
+        version = path.stem
+        with engine.begin() as conn:
+            already_applied = conn.execute(
+                text("SELECT 1 FROM schema_migrations WHERE version = :version"), {"version": version}
+            ).first()
+            if already_applied:
+                continue
+            conn.execute(text(path.read_text(encoding="utf-8")))
+            conn.execute(text("INSERT INTO schema_migrations (version) VALUES (:version)"), {"version": version})
+        applied.append(version)
+
+    return applied

@@ -387,10 +387,10 @@ $$
 A visual uncertainty interval can be expressed as:
 
 $$
-\mu_t \pm 1.96\sigma_t
+\mu_t \pm 1.645\sigma_t
 $$
 
-This produces an approximate 95% model-based predictive interval under the model assumptions.
+This produces an approximate 90% model-based predictive interval under the model assumptions.
 
 ### Chronological train/validation split
 

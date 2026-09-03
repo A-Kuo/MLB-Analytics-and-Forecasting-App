@@ -31,6 +31,8 @@ from __future__ import annotations
 
 from sqlalchemy import Engine, text
 
+from macroservice.sql import load_query
+
 
 def _to_float(value) -> float | None:
     try:
@@ -50,35 +52,11 @@ def _to_int(value) -> int | None:
 # Player season stats (plain MLB Stats API)
 # ---------------------------------------------------------------------------
 
-_FETCH_PLAYER_SEASON_HITTING_SQL = text(
-    "SELECT avg, obp, slg, ops, home_runs, rbi, strikeouts, walks "
-    "FROM player_season_hitting_stats WHERE player_id = :player_id AND season = :season"
-)
-_UPSERT_PLAYER_SEASON_HITTING_SQL = text("""
-    INSERT INTO player_season_hitting_stats
-        (player_id, season, avg, obp, slg, ops, home_runs, rbi, strikeouts, walks)
-    VALUES
-        (:player_id, :season, :avg, :obp, :slg, :ops, :home_runs, :rbi, :strikeouts, :walks)
-    ON CONFLICT (player_id, season) DO UPDATE SET
-        avg = EXCLUDED.avg, obp = EXCLUDED.obp, slg = EXCLUDED.slg, ops = EXCLUDED.ops,
-        home_runs = EXCLUDED.home_runs, rbi = EXCLUDED.rbi,
-        strikeouts = EXCLUDED.strikeouts, walks = EXCLUDED.walks
-""")
+_FETCH_PLAYER_SEASON_HITTING_SQL = text(load_query("season_stats", "fetch_player_hitting.sql"))
+_UPSERT_PLAYER_SEASON_HITTING_SQL = text(load_query("season_stats", "upsert_player_hitting.sql"))
 
-_FETCH_PLAYER_SEASON_PITCHING_SQL = text(
-    "SELECT era, whip, strikeouts, walks, innings_pitched, earned_runs "
-    "FROM player_season_pitching_stats WHERE player_id = :player_id AND season = :season"
-)
-_UPSERT_PLAYER_SEASON_PITCHING_SQL = text("""
-    INSERT INTO player_season_pitching_stats
-        (player_id, season, era, whip, strikeouts, walks, innings_pitched, earned_runs)
-    VALUES
-        (:player_id, :season, :era, :whip, :strikeouts, :walks, :innings_pitched, :earned_runs)
-    ON CONFLICT (player_id, season) DO UPDATE SET
-        era = EXCLUDED.era, whip = EXCLUDED.whip, strikeouts = EXCLUDED.strikeouts,
-        walks = EXCLUDED.walks, innings_pitched = EXCLUDED.innings_pitched,
-        earned_runs = EXCLUDED.earned_runs
-""")
+_FETCH_PLAYER_SEASON_PITCHING_SQL = text(load_query("season_stats", "fetch_player_pitching.sql"))
+_UPSERT_PLAYER_SEASON_PITCHING_SQL = text(load_query("season_stats", "upsert_player_pitching.sql"))
 
 
 def fetch_player_season_hitting(engine: Engine, player_id: int, season: int) -> dict | None:
@@ -139,29 +117,11 @@ def upsert_player_season_pitching(engine: Engine, player_id: int, season: int, s
 # Player Statcast season aggregates (2015+ only)
 # ---------------------------------------------------------------------------
 
-_FETCH_PLAYER_STATCAST_HITTING_SQL = text(
-    "SELECT xba, avg_exit_velocity, hard_hit_pct, barrel_pct "
-    "FROM player_statcast_hitting_season WHERE player_id = :player_id AND season = :season"
-)
-_UPSERT_PLAYER_STATCAST_HITTING_SQL = text("""
-    INSERT INTO player_statcast_hitting_season (player_id, season, xba, avg_exit_velocity, hard_hit_pct, barrel_pct)
-    VALUES (:player_id, :season, :xba, :avg_exit_velocity, :hard_hit_pct, :barrel_pct)
-    ON CONFLICT (player_id, season) DO UPDATE SET
-        xba = EXCLUDED.xba, avg_exit_velocity = EXCLUDED.avg_exit_velocity,
-        hard_hit_pct = EXCLUDED.hard_hit_pct, barrel_pct = EXCLUDED.barrel_pct
-""")
+_FETCH_PLAYER_STATCAST_HITTING_SQL = text(load_query("season_stats", "fetch_player_statcast_hitting.sql"))
+_UPSERT_PLAYER_STATCAST_HITTING_SQL = text(load_query("season_stats", "upsert_player_statcast_hitting.sql"))
 
-_FETCH_PLAYER_STATCAST_PITCHING_SQL = text(
-    "SELECT csw_pct, whiff_pct, chase_pct, avg_velocity "
-    "FROM player_statcast_pitching_season WHERE player_id = :player_id AND season = :season"
-)
-_UPSERT_PLAYER_STATCAST_PITCHING_SQL = text("""
-    INSERT INTO player_statcast_pitching_season (player_id, season, csw_pct, whiff_pct, chase_pct, avg_velocity)
-    VALUES (:player_id, :season, :csw_pct, :whiff_pct, :chase_pct, :avg_velocity)
-    ON CONFLICT (player_id, season) DO UPDATE SET
-        csw_pct = EXCLUDED.csw_pct, whiff_pct = EXCLUDED.whiff_pct,
-        chase_pct = EXCLUDED.chase_pct, avg_velocity = EXCLUDED.avg_velocity
-""")
+_FETCH_PLAYER_STATCAST_PITCHING_SQL = text(load_query("season_stats", "fetch_player_statcast_pitching.sql"))
+_UPSERT_PLAYER_STATCAST_PITCHING_SQL = text(load_query("season_stats", "upsert_player_statcast_pitching.sql"))
 
 
 def fetch_player_statcast_hitting_season(engine: Engine, player_id: int, season: int) -> dict | None:
@@ -204,36 +164,11 @@ def upsert_player_statcast_pitching_season(engine: Engine, player_id: int, seaso
 # Player game logs
 # ---------------------------------------------------------------------------
 
-_FETCH_PLAYER_GAME_LOG_HITTING_SQL = text("""
-    SELECT game_date, opponent, at_bats, hits, home_runs, rbi, walks, strikeouts, avg
-    FROM player_game_log_hitting WHERE player_id = :player_id AND season = :season
-    ORDER BY game_date, game_index
-""")
-_UPSERT_PLAYER_GAME_LOG_HITTING_SQL = text("""
-    INSERT INTO player_game_log_hitting
-        (player_id, season, game_date, game_index, opponent, at_bats, hits, home_runs, rbi, walks, strikeouts, avg)
-    VALUES
-        (:player_id, :season, :game_date, :game_index, :opponent, :at_bats, :hits, :home_runs, :rbi, :walks, :strikeouts, :avg)
-    ON CONFLICT (player_id, season, game_date, game_index) DO UPDATE SET
-        opponent = EXCLUDED.opponent, at_bats = EXCLUDED.at_bats, hits = EXCLUDED.hits,
-        home_runs = EXCLUDED.home_runs, rbi = EXCLUDED.rbi, walks = EXCLUDED.walks,
-        strikeouts = EXCLUDED.strikeouts, avg = EXCLUDED.avg
-""")
+_FETCH_PLAYER_GAME_LOG_HITTING_SQL = text(load_query("season_stats", "fetch_player_game_log_hitting.sql"))
+_UPSERT_PLAYER_GAME_LOG_HITTING_SQL = text(load_query("season_stats", "upsert_player_game_log_hitting.sql"))
 
-_FETCH_PLAYER_GAME_LOG_PITCHING_SQL = text("""
-    SELECT game_date, opponent, innings_pitched, hits, earned_runs, strikeouts, walks, era
-    FROM player_game_log_pitching WHERE player_id = :player_id AND season = :season
-    ORDER BY game_date, game_index
-""")
-_UPSERT_PLAYER_GAME_LOG_PITCHING_SQL = text("""
-    INSERT INTO player_game_log_pitching
-        (player_id, season, game_date, game_index, opponent, innings_pitched, hits, earned_runs, strikeouts, walks, era)
-    VALUES
-        (:player_id, :season, :game_date, :game_index, :opponent, :innings_pitched, :hits, :earned_runs, :strikeouts, :walks, :era)
-    ON CONFLICT (player_id, season, game_date, game_index) DO UPDATE SET
-        opponent = EXCLUDED.opponent, innings_pitched = EXCLUDED.innings_pitched, hits = EXCLUDED.hits,
-        earned_runs = EXCLUDED.earned_runs, strikeouts = EXCLUDED.strikeouts, walks = EXCLUDED.walks, era = EXCLUDED.era
-""")
+_FETCH_PLAYER_GAME_LOG_PITCHING_SQL = text(load_query("season_stats", "fetch_player_game_log_pitching.sql"))
+_UPSERT_PLAYER_GAME_LOG_PITCHING_SQL = text(load_query("season_stats", "upsert_player_game_log_pitching.sql"))
 
 
 def _dedupe_game_index(splits: list[dict]) -> list[int]:
@@ -328,29 +263,11 @@ def upsert_player_game_log_pitching(engine: Engine, player_id: int, season: int,
 # Team season stats
 # ---------------------------------------------------------------------------
 
-_FETCH_TEAM_SEASON_HITTING_SQL = text(
-    "SELECT runs, avg, obp, slg, ops, games_played "
-    "FROM team_season_hitting_stats WHERE team_id = :team_id AND season = :season"
-)
-_UPSERT_TEAM_SEASON_HITTING_SQL = text("""
-    INSERT INTO team_season_hitting_stats (team_id, season, runs, avg, obp, slg, ops, games_played)
-    VALUES (:team_id, :season, :runs, :avg, :obp, :slg, :ops, :games_played)
-    ON CONFLICT (team_id, season) DO UPDATE SET
-        runs = EXCLUDED.runs, avg = EXCLUDED.avg, obp = EXCLUDED.obp, slg = EXCLUDED.slg,
-        ops = EXCLUDED.ops, games_played = EXCLUDED.games_played
-""")
+_FETCH_TEAM_SEASON_HITTING_SQL = text(load_query("season_stats", "fetch_team_hitting.sql"))
+_UPSERT_TEAM_SEASON_HITTING_SQL = text(load_query("season_stats", "upsert_team_hitting.sql"))
 
-_FETCH_TEAM_SEASON_PITCHING_SQL = text(
-    "SELECT wins, losses, runs_allowed, era, whip, games_played "
-    "FROM team_season_pitching_stats WHERE team_id = :team_id AND season = :season"
-)
-_UPSERT_TEAM_SEASON_PITCHING_SQL = text("""
-    INSERT INTO team_season_pitching_stats (team_id, season, wins, losses, runs_allowed, era, whip, games_played)
-    VALUES (:team_id, :season, :wins, :losses, :runs_allowed, :era, :whip, :games_played)
-    ON CONFLICT (team_id, season) DO UPDATE SET
-        wins = EXCLUDED.wins, losses = EXCLUDED.losses, runs_allowed = EXCLUDED.runs_allowed,
-        era = EXCLUDED.era, whip = EXCLUDED.whip, games_played = EXCLUDED.games_played
-""")
+_FETCH_TEAM_SEASON_PITCHING_SQL = text(load_query("season_stats", "fetch_team_pitching.sql"))
+_UPSERT_TEAM_SEASON_PITCHING_SQL = text(load_query("season_stats", "upsert_team_pitching.sql"))
 
 
 def fetch_team_season_hitting(engine: Engine, team_id: int, season: int) -> dict | None:

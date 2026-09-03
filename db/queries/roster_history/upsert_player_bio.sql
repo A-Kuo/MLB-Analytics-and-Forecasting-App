@@ -6,11 +6,11 @@ INSERT INTO players (
     active
 )
 VALUES (
-    %(id)s,
-    %(name)s,
-    %(debut_year)s,
-    %(last_active_year)s,
-    %(active)s
+    :id,
+    :name,
+    :debut_year,
+    :last_active_year,
+    :active
 )
 ON CONFLICT (id)
 DO UPDATE SET

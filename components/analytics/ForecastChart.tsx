@@ -1,18 +1,9 @@
 "use client";
 
 import { PlotlyChart } from "@/components/charts/PlotlyChart";
+import { CHART_MARKER_OUTLINE, CHART_PALETTE, withAlpha } from "@/lib/chartColors";
 import type { ForecastPayload } from "@/lib/api";
 import { isRateMetric } from "@/lib/metrics";
-
-const METRIC_PALETTE = ["#1F77B4", "#D62728", "#2CA02C", "#FF7F0E", "#9467BD", "#8C564B", "#17BECF", "#E377C2"];
-
-function translucent(hex: string, alpha = 0.15): string {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 type ForecastChartProps = {
   forecastByMetric: Record<string, ForecastPayload>;
@@ -20,7 +11,7 @@ type ForecastChartProps = {
   title: string;
 };
 
-/** Per selected metric: a shaded 95% CI band, a dotted forecast trend line
+/** Per selected metric: a shaded 90% CI band, a dotted forecast trend line
  * spanning [train_end, forecast_end], and diamond markers wherever real
  * ground truth exists in that window -- the React/Plotly analogue of
  * chart.py's build_forecast_figure. Same dual-axis rate/count split as
@@ -34,7 +25,7 @@ export function ForecastChart({ forecastByMetric, acronymByMetric, title }: Fore
   keys.forEach((key, index) => {
     const payload = forecastByMetric[key];
     const acronym = acronymByMetric[key] ?? key;
-    const color = METRIC_PALETTE[index % METRIC_PALETTE.length];
+    const color = CHART_PALETTE[index % CHART_PALETTE.length];
     const axis = isRateMetric(key) || !hasRate ? "y" : "y2";
     const { years, forecast, ci_lower, ci_upper, actual } = payload;
 
@@ -43,10 +34,10 @@ export function ForecastChart({ forecastByMetric, acronymByMetric, title }: Fore
         x: [...years, ...years.slice().reverse()],
         y: [...ci_upper, ...ci_lower.slice().reverse()],
         fill: "toself",
-        fillcolor: translucent(color),
+        fillcolor: withAlpha(color),
         line: { width: 0 },
         yaxis: axis,
-        name: `${acronym} 95% CI`,
+        name: `${acronym} 90% CI`,
         hoverinfo: "skip",
         showlegend: false,
       });
@@ -72,7 +63,7 @@ export function ForecastChart({ forecastByMetric, acronymByMetric, title }: Fore
         type: "scatter",
         mode: "markers",
         name: `${acronym} actual`,
-        marker: { color, size: 9, symbol: "diamond", line: { width: 1, color: "#333" } },
+        marker: { color, size: 9, symbol: "diamond", line: { width: 1, color: CHART_MARKER_OUTLINE } },
         yaxis: axis,
         hovertemplate: `%{x}<br>${acronym}: %{y}<extra></extra>`,
       });

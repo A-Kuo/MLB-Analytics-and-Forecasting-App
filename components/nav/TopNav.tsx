@@ -42,7 +42,7 @@ export function TopNav({ onToggleNews }: TopNavProps) {
                   className={
                     active
                       ? "border-b-2 border-mlb-red py-4 text-sm font-medium text-ink-deep"
-                      : "py-4 text-sm font-medium text-steel transition-colors hover:text-ink-deep"
+                      : "py-4 text-sm font-medium text-steel transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:text-ink-deep"
                   }
                 >
                   {link.label}
@@ -53,7 +53,7 @@ export function TopNav({ onToggleNews }: TopNavProps) {
           <button
             type="button"
             onClick={onToggleNews}
-            className="rounded-md border border-hairline-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-soft"
+            className="rounded-full border border-hairline-strong px-4 py-2 text-sm font-medium text-ink transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:bg-surface-soft"
           >
             News Feed
           </button>

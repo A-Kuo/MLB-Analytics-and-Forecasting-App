@@ -1,12 +1,3 @@
-SELECT
-    team_id,
-    season,
-    era,
-    whip,
-    strike_outs,
-    base_on_balls,
-    innings_pitched,
-    earned_runs
-FROM team_season_pitching
-WHERE team_id = %s
-  AND season = %s;
+SELECT wins, losses, runs_allowed, era, whip, games_played
+FROM team_season_pitching_stats
+WHERE team_id = :team_id AND season = :season;

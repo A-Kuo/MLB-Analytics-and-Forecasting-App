@@ -57,7 +57,7 @@ export function LeaderboardExpander({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-md py-sm text-left text-body-sm-medium text-ink hover:bg-surface-soft"
+        className="flex w-full items-center justify-between px-md py-sm text-left text-body-sm-medium text-ink transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-surface-soft"
       >
         <span>
           {fullNameForMetric(metricKey)} ({acronym})

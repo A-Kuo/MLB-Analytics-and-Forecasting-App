@@ -53,14 +53,14 @@ def test_fetch_player_season_hitting_filters_by_player_and_season():
     season_stats_db.fetch_player_season_hitting(engine, 660271, 2023)
     sql, params = conn.execute.call_args[0]
     assert params == {"player_id": 660271, "season": 2023}
-    assert "player_id = :player_id AND season = :season" in str(sql)
+    assert "player_id = :player_id AND season = :season" in " ".join(str(sql).split())
 
 
 def test_upsert_player_season_hitting_casts_and_upserts():
     engine, conn = _writable_engine()
     season_stats_db.upsert_player_season_hitting(engine, 660271, 2023, {"avg": ".312", "homeRuns": "31", "obp": None})
     sql, params = conn.execute.call_args[0]
-    assert "ON CONFLICT (player_id, season) DO UPDATE" in str(sql)
+    assert "ON CONFLICT (player_id, season) DO UPDATE" in " ".join(str(sql).split())
     assert params["avg"] == 0.312
     assert params["home_runs"] == 31
     assert params["obp"] is None
@@ -204,5 +204,5 @@ def test_upsert_team_season_pitching_maps_runs_key_to_runs_allowed_column():
 def test_upsert_team_season_hitting_upsert_key_matches_pk():
     engine, conn = _writable_engine()
     season_stats_db.upsert_team_season_hitting(engine, 147, 2023, {"runs": 700})
-    sql = str(conn.execute.call_args[0][0])
+    sql = " ".join(str(conn.execute.call_args[0][0]).split())
     assert "ON CONFLICT (team_id, season) DO UPDATE" in sql

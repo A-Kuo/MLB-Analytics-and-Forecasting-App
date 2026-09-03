@@ -1,79 +1,114 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------
- * Design tokens. Originally transcribed 1:1 from DESIGN.md's YAML front
- * matter (a light, Notion-inspired palette) -- since superseded by a
- * charcoal + MLB red/blue theme, ported to match the Streamlit app's
- * .streamlit/config.toml exactly (background #1a1a1a, secondary surface
- * #2d2d2d, text #e0e0e0, MLB red #BD3039, MLB navy #002D72, a lighter
- * #6699cc for link hover since navy is unreadable on a dark background --
- * see app.py's own comment on that). Token NAMES are kept from the
- * original light theme (canvas/surface/ink/hairline/etc.) so nothing
- * referencing them needs renaming -- only the values changed, to dark-mode
- * equivalents. "Notion Sans" in DESIGN.md is Notion's own proprietary
- * branded font, not something this project can license/embed -- DESIGN.md
- * itself names the real basis (Inter), so --font-sans below is aliased to
- * the Inter variable font loaded in app/layout.tsx via next/font/google.
+ * Design tokens. Base neutrals/text/semantic values and the accent-hue
+ * structure below are adapted from a retool.com design-language extract
+ * (2026-05-28): a dark warm-neutral base plus a 4-weight-per-hue accent
+ * system (base/muted/background/focused). MLB red keeps the "primary
+ * accent" role rather than switching to Retool's own blue -- Retool's
+ * other hues (blue/green/orange/purple/...) are kept as the app's
+ * secondary accent set (chart palette, future semantic states). Token
+ * NAMES are unchanged from the app's own prior charcoal theme so nothing
+ * referencing them needs renaming -- only values/additions changed.
+ * "Saans"/"pxGrotesk" in the source extract are Retool's own proprietary
+ * self-hosted fonts, not something this project can license/embed --
+ * Inter (already loaded in app/layout.tsx via next/font/google) is kept,
+ * with weight 300 applied to large headings to approximate the source's
+ * light/tight-tracking feel.
+ *
+ * Mirrored in /design-tokens.json for cross-platform (mobile) reference --
+ * update both together.
  * ------------------------------------------------------------------- */
 @theme {
   --font-sans: var(--font-inter), Inter, -apple-system, system-ui, "Segoe UI", Helvetica, sans-serif;
 
-  /* MLB brand colors -- the actual source of truth for the theme */
+  /* MLB brand colors -- the actual source of truth for the theme.
+     4-weight accent shape: focused (mlb-red) / base (mlb-red-hover) /
+     background (dark wash) / muted (pastel tint). */
   --color-mlb-red: #bd3039;
   --color-mlb-red-hover: #9a2530;
+  --color-mlb-red-background: #4a1216;
+  --color-mlb-red-muted: #ebadb2;
   --color-mlb-navy: #002d72;
   --color-mlb-link: #e0e0e0;
   --color-mlb-link-hover: #6699cc;
 
-  /* colors.* -- names kept from the original light theme, values ported
-     to the charcoal theme above */
-  --color-primary: var(--color-mlb-navy);
-  --color-primary-pressed: #001d4d;
-  --color-primary-deep: #001333;
-  --color-on-primary: #ffffff;
-  --color-brand-navy: var(--color-mlb-navy);
-  --color-brand-navy-deep: #001d4d;
-  --color-brand-navy-mid: #001f52;
-  --color-link-blue: var(--color-mlb-link);
-  --color-link-blue-pressed: var(--color-mlb-link-hover);
-  --color-brand-orange: #dd5b00;
-  --color-brand-orange-deep: #793400;
-  --color-brand-pink: #ff64c8;
-  --color-brand-pink-deep: #a02e6d;
-  --color-brand-purple: #7b3ff2;
-  --color-brand-purple-300: #d6b6f6;
-  --color-brand-purple-800: #391c57;
-  --color-brand-teal: #2a9d99;
-  --color-brand-green: #1aae39;
-  --color-brand-yellow: #f5d75e;
-  --color-brand-brown: #523410;
-  --color-card-tint-peach: #ffe8d4;
-  --color-card-tint-rose: #fde0ec;
-  --color-card-tint-mint: #d9f3e1;
-  --color-card-tint-lavender: #e6e0f5;
-  --color-card-tint-sky: #dcecfa;
-  --color-card-tint-yellow: #fef7d6;
-  --color-card-tint-yellow-bold: #f9e79f;
-  --color-card-tint-cream: #f8f5e8;
-  --color-card-tint-gray: #f0eeec;
-  --color-canvas: #1a1a1a;
-  --color-surface: #2d2d2d;
-  --color-surface-soft: #242424;
+  /* Secondary accent hues -- chart palette (lib/chartColors.ts mirrors
+     these as literal hex, since Plotly doesn't resolve CSS vars) and
+     future semantic/status use. Full 4-weight sets where the source
+     extract had them (blue/green/orange/purple); focused-only for the
+     rest (no full source data -- not invented). Namespaced --color-accent-*
+     to avoid colliding with Tailwind v4's own built-in numbered scales. */
+  --color-accent-blue: #518dd2;
+  --color-accent-blue-base: #2d4c71;
+  --color-accent-blue-background: #1b2e44;
+  --color-accent-blue-muted: #b0ccea;
+  --color-accent-green: #4d9987;
+  --color-accent-green-base: #185849;
+  --color-accent-green-background: #0e352c;
+  --color-accent-green-muted: #afd1c6;
+  --color-accent-orange: #e8765e;
+  --color-accent-orange-base: #793325;
+  --color-accent-orange-background: #491f16;
+  --color-accent-orange-muted: #f5c2b2;
+  --color-accent-purple: #9874d2;
+  --color-accent-purple-base: #53397c;
+  --color-accent-purple-background: #3f2a68;
+  --color-accent-purple-muted: #d0c1ea;
+  --color-accent-pink: #cc64ce;
+  --color-accent-yellow: #eca438;
+  --color-accent-lime: #e0d643;
+  --color-accent-gray: #8b867f;
+
+  --color-canvas: #151515;
+  --color-canvas-deep: #0e0e0e;
+  --color-surface: #242424;
+  --color-surface-soft: #1e1e1e;
   --color-hairline: #3d3d3d;
   --color-hairline-soft: #333333;
   --color-hairline-strong: #4d4d4d;
-  --color-ink-deep: #ffffff;
-  --color-ink: #e0e0e0;
-  --color-charcoal: #cfcfcf;
-  --color-slate: #b0b0b0;
-  --color-steel: #8a8a8a;
-  --color-stone: #6e6e6e;
-  --color-muted: #555555;
-  --color-on-dark: #ffffff;
-  --color-on-dark-muted: #a4a097;
-  --color-semantic-success: #1aae39;
-  --color-semantic-warning: #dd5b00;
-  --color-semantic-error: #e03131;
+  --color-ink-deep: #e9ebdf;
+  --color-ink: #cbccc4;
+  --color-slate: #b6b8af;
+  --color-steel: #9ea098;
+  --color-stone: #868881;
+  --color-muted: #6e706a;
+
+  /* Semantic -- 4-weight each (focused/base/background/muted), matching
+     the source extract's mid/dark/darkest/light steps. */
+  --color-semantic-error: #f15264;
+  --color-semantic-error-base: #c72844;
+  --color-semantic-error-background: #651722;
+  --color-semantic-error-muted: #e79295;
+  --color-semantic-success: #11997a;
+  --color-semantic-success-base: #008163;
+  --color-semantic-success-background: #1a3c32;
+  --color-semantic-success-muted: #52bb9d;
+  --color-semantic-warning: #f1a42e;
+  --color-semantic-warning-base: #aa6800;
+  --color-semantic-warning-background: #4b371d;
+  --color-semantic-warning-muted: #e0a24e;
+
+  /* Motion -- a single custom ease plus a duration step scale, applied to
+     existing hover/transition-colors usage across nav/buttons/cards. */
+  --ease-primary: cubic-bezier(0.72, 0, 0.12, 1);
+  --duration-xs: 100ms;
+  --duration-sm: 200ms;
+  --duration-md: 300ms;
+  --duration-lg: 600ms;
+
+  /* Gradients -- soft-coded and available, not applied anywhere yet.
+     Natural first use is a future marketing/landing page or a premium-
+     feature badge, not the dashboard itself. */
+  --gradient-hero: linear-gradient(
+    90deg,
+    rgb(35, 52, 39) 0%,
+    rgb(56, 80, 86) 26.05%,
+    rgb(125, 110, 165) 51.26%,
+    rgb(180, 152, 215) 77.04%,
+    rgb(176, 204, 234) 100%
+  );
+  --gradient-accent-bar: linear-gradient(90deg, var(--color-ink-deep) 0%, var(--color-mlb-red) 100%);
 
   /* rounded.* */
   --radius-xs: 4px;
@@ -101,50 +136,58 @@
 }
 
 /* ---------------------------------------------------------------------
- * typography.* -- DESIGN.md's named text styles bundle size/weight/
- * line-height/letter-spacing together, which doesn't line up with
- * Tailwind's own text-* scale, so these are custom utilities instead
- * (usable directly as classes: className="text-heading-1"). Wrapped as
- * reusable <Heading>/<Text> variants in components/ui/Typography.tsx
- * rather than applied ad hoc everywhere.
+ * typography.* -- named text styles bundling size/weight/line-height/
+ * letter-spacing together, which doesn't line up with Tailwind's own
+ * text-* scale, so these are custom utilities instead (usable directly as
+ * classes: className="text-heading-1"). Weight/tracking on the large
+ * page-title tier (hero-display through heading-2) drops to 300 with
+ * tighter negative tracking, approximating the retool.com extract's
+ * light-weight heading feel (see globals.css's top-of-file token comment).
+ * heading-3 gets a smaller step (400); heading-4/-5 stay at 500 rather
+ * than dropping further -- both are used as small (18-22px) structural
+ * section labels (e.g. "Team", "Timeline", "Player") many times per page,
+ * where weight 300 read as washed out rather than elegant. Sizes/
+ * line-heights are unchanged throughout -- already dashboard-appropriate,
+ * not the source's marketing-hero scale.
  * ------------------------------------------------------------------- */
 @utility text-hero-display {
   font-size: 80px;
-  font-weight: 600;
+  font-weight: 300;
   line-height: 1.05;
-  letter-spacing: -2px;
+  letter-spacing: -2.5px;
 }
 @utility text-display-lg {
   font-size: 56px;
-  font-weight: 600;
+  font-weight: 300;
   line-height: 1.10;
-  letter-spacing: -1px;
+  letter-spacing: -1.5px;
 }
 @utility text-heading-1 {
   font-size: 48px;
-  font-weight: 600;
+  font-weight: 300;
   line-height: 1.15;
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
 }
 @utility text-heading-2 {
   font-size: 36px;
-  font-weight: 600;
+  font-weight: 300;
   line-height: 1.20;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.75px;
 }
 @utility text-heading-3 {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.25;
+  letter-spacing: -0.25px;
 }
 @utility text-heading-4 {
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.30;
 }
 @utility text-heading-5 {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.40;
 }
 @utility text-subtitle {
@@ -198,6 +241,15 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 1.30;
+}
+
+/* Gradient utilities for the --gradient-* tokens above -- see that
+   comment for why nothing in the app references these yet. */
+@utility bg-gradient-hero {
+  background-image: var(--gradient-hero);
+}
+@utility bg-gradient-accent-bar {
+  background-image: var(--gradient-accent-bar);
 }
 
 body {

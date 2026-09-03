@@ -106,11 +106,14 @@ def test_top_players_by_metric_uses_descending_order_for_home_runs():
     assert "DESC" in str(sql)
 
 
-def test_top_players_by_metric_selects_from_the_registered_table_and_column():
+def test_top_players_by_metric_selects_from_the_registered_view_and_column():
+    # Queries v_insights_hitting (db/views/), not player_statcast_hitting_
+    # season directly -- the view already joins that table in along with
+    # player_season_team/players, so this lookup needs no JOIN of its own.
     engine, conn = _engine_returning_rows([])
     insights_db.top_players_by_metric(engine, "xba", "hitting", 2023, frozenset({147}))
     sql, _ = conn.execute.call_args[0]
-    assert "player_statcast_hitting_season" in str(sql)
+    assert "v_insights_hitting" in str(sql)
     assert "xba" in str(sql)
 
 

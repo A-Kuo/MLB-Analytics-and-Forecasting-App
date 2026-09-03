@@ -20,45 +20,45 @@ from __future__ import annotations
 
 from sqlalchemy import Engine, text
 
-# metric key -> (table, column, ascending). ascending=True means "lowest
+from macroservice.sql import load_query
+
+# metric key -> (view, column, ascending). ascending=True means "lowest
 # value wins" (ERA, WHIP, walks allowed) -- everything else is descending
 # ("highest value wins"), including a pitcher's own strikeouts (more Ks
-# thrown is better, unlike walks allowed).
+# thrown is better, unlike walks allowed). view is v_insights_hitting/
+# v_insights_pitching (db/views/) -- both already join player_season_team +
+# the season-stats/Statcast tables + players, so a lookup here needs no
+# JOIN of its own, just a column/sort choice.
 _HITTING_METRIC_REGISTRY: dict[str, tuple[str, str, bool]] = {
-    "avg": ("player_season_hitting_stats", "avg", False),
-    "obp": ("player_season_hitting_stats", "obp", False),
-    "slg": ("player_season_hitting_stats", "slg", False),
-    "ops": ("player_season_hitting_stats", "ops", False),
-    "homeRuns": ("player_season_hitting_stats", "home_runs", False),
-    "rbi": ("player_season_hitting_stats", "rbi", False),
-    "strikeOuts": ("player_season_hitting_stats", "strikeouts", False),
-    "baseOnBalls": ("player_season_hitting_stats", "walks", False),
-    "xba": ("player_statcast_hitting_season", "xba", False),
-    "avgExitVelocity": ("player_statcast_hitting_season", "avg_exit_velocity", False),
-    "hardHitPct": ("player_statcast_hitting_season", "hard_hit_pct", False),
-    "barrelPct": ("player_statcast_hitting_season", "barrel_pct", False),
+    "avg": ("v_insights_hitting", "avg", False),
+    "obp": ("v_insights_hitting", "obp", False),
+    "slg": ("v_insights_hitting", "slg", False),
+    "ops": ("v_insights_hitting", "ops", False),
+    "homeRuns": ("v_insights_hitting", "home_runs", False),
+    "rbi": ("v_insights_hitting", "rbi", False),
+    "strikeOuts": ("v_insights_hitting", "strikeouts", False),
+    "baseOnBalls": ("v_insights_hitting", "walks", False),
+    "xba": ("v_insights_hitting", "xba", False),
+    "avgExitVelocity": ("v_insights_hitting", "avg_exit_velocity", False),
+    "hardHitPct": ("v_insights_hitting", "hard_hit_pct", False),
+    "barrelPct": ("v_insights_hitting", "barrel_pct", False),
 }
 
 _PITCHING_METRIC_REGISTRY: dict[str, tuple[str, str, bool]] = {
-    "era": ("player_season_pitching_stats", "era", True),
-    "whip": ("player_season_pitching_stats", "whip", True),
-    "strikeOuts": ("player_season_pitching_stats", "strikeouts", False),
-    "baseOnBalls": ("player_season_pitching_stats", "walks", True),
-    "inningsPitched": ("player_season_pitching_stats", "innings_pitched", False),
-    "earnedRuns": ("player_season_pitching_stats", "earned_runs", True),
-    "cswPct": ("player_statcast_pitching_season", "csw_pct", False),
-    "whiffPct": ("player_statcast_pitching_season", "whiff_pct", False),
-    "chasePct": ("player_statcast_pitching_season", "chase_pct", False),
-    "avgVelocity": ("player_statcast_pitching_season", "avg_velocity", False),
+    "era": ("v_insights_pitching", "era", True),
+    "whip": ("v_insights_pitching", "whip", True),
+    "strikeOuts": ("v_insights_pitching", "strikeouts", False),
+    "baseOnBalls": ("v_insights_pitching", "walks", True),
+    "inningsPitched": ("v_insights_pitching", "innings_pitched", False),
+    "earnedRuns": ("v_insights_pitching", "earned_runs", True),
+    "cswPct": ("v_insights_pitching", "csw_pct", False),
+    "whiffPct": ("v_insights_pitching", "whiff_pct", False),
+    "chasePct": ("v_insights_pitching", "chase_pct", False),
+    "avgVelocity": ("v_insights_pitching", "avg_velocity", False),
 }
 
-
-_UPSERT_PLAYER_SEASON_TEAM_SQL = text("""
-    INSERT INTO player_season_team (player_id, team_id, season, position, is_pitcher)
-    VALUES (:player_id, :team_id, :season, :position, :is_pitcher)
-    ON CONFLICT (player_id, team_id, season) DO UPDATE SET
-        position = EXCLUDED.position, is_pitcher = EXCLUDED.is_pitcher
-""")
+_LEADERBOARD_SQL_TEMPLATE = load_query("insights", "leaderboard.sql")
+_UPSERT_PLAYER_SEASON_TEAM_SQL = text(load_query("insights", "upsert_player_season_team.sql"))
 
 
 def upsert_player_season_team(engine: Engine, rows: list[dict]) -> None:
@@ -86,29 +86,17 @@ def top_players_by_metric(
     """Top ``limit`` players for one metric/season among ``team_ids``.
 
     Each result dict has player_id/name/debut_year/last_active_year/active/
-    metric_value. A plain SELECT DISTINCT (not DISTINCT ON + a subquery) is
-    enough to dedupe: player_season_*_stats are keyed (player_id, season),
-    not (player_id, team_id, season), so a player traded between two
-    currently-selected teams produces duplicate IDENTICAL rows via the
-    join fan-out (same metric value both times), never duplicate values.
+    metric_value. See db/queries/insights/leaderboard.sql for the dedupe
+    rationale (a plain SELECT DISTINCT, not DISTINCT ON + a subquery).
 
-    ``table``/``column`` are interpolated from the fixed registries above
+    ``view``/``column`` are interpolated from the fixed registries above
     (never from caller-supplied input), so this isn't a SQL-injection
-    surface despite the f-string.
+    surface despite the runtime template substitution.
     """
     registry = _PITCHING_METRIC_REGISTRY if group == "pitching" else _HITTING_METRIC_REGISTRY
-    table, column, ascending = registry[metric_key]
+    view, column, ascending = registry[metric_key]
     order = "ASC" if ascending else "DESC"
-    sql = text(f"""
-        SELECT DISTINCT p.id AS player_id, p.name, p.debut_year, p.last_active_year, p.active,
-               m.{column} AS metric_value
-        FROM {table} m
-        JOIN player_season_team pst ON pst.player_id = m.player_id AND pst.season = m.season
-        JOIN players p ON p.id = m.player_id
-        WHERE m.season = :season AND pst.team_id = ANY(:team_ids) AND m.{column} IS NOT NULL
-        ORDER BY m.{column} {order}
-        LIMIT :limit
-    """)
+    sql = text(_LEADERBOARD_SQL_TEMPLATE.format(view=view, column=column, order=order))
     with engine.connect() as conn:
         rows = conn.execute(sql, {"season": season, "team_ids": list(team_ids), "limit": limit}).mappings().all()
     return [dict(row) for row in rows]

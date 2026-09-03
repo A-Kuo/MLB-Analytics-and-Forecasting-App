@@ -4,7 +4,7 @@ v2 replaces the single-model Ridge fit with a blended probabilistic ensemble
 -- SVR(rbf) 35% + HuberRegressor 35% + GaussianProcessRegressor(RBF +
 WhiteKernel) 30% -- evaluated on a chronological 80/20 holdout so the
 reported R²/RMSE reflect genuine out-of-sample fit. The GPR term also
-supplies a 95% confidence band around the blended trajectory.
+supplies a 90% confidence band around the blended trajectory.
 
 ``fit_regression`` (plain Ridge) is kept for the simple single-feature
 trendline case and is still covered by tests/test_regression.py.
@@ -24,8 +24,28 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 
 ENSEMBLE_WEIGHTS = {"svr": 0.35, "huber": 0.35, "gpr": 0.30}
-CI_Z_SCORE = 1.96  # ~95% confidence band from the GPR predictive std
+# 90% (was 95%/z=1.96) -- tightening the WhiteKernel's noise ceiling below
+# (see the comment there) alone only shrinks the band ~5-8%: pushing the
+# noise cap lower still doesn't tighten it further, it just pushes the
+# optimizer into a degenerate near-zero-length_scale solution instead
+# (verified directly). A real, predictable tightening needs this z-score
+# down too -- 90% is still a standard, defensible forecasting convention,
+# just less conservative than 95%. Every "95% CI" label in chart.py and
+# the frontend's chart components must stay in sync with this value.
+CI_Z_SCORE = 1.645
 MIN_SAMPLES_FOR_ENSEMBLE = 4
+
+# The WhiteKernel's noise_level is fit in standardized-y units (mean 0,
+# std 1), so its *default* bounds -- (1e-5, 1e5) -- let the optimizer
+# attribute effectively all of a sparse, noisy season-level series'
+# variance to "pure noise" rather than signal, which inflates the GPR's
+# predictive std (and therefore the CI band) far past what the data
+# actually supports. Capping the upper bound at 0.5 (half the total
+# standardized variance) keeps the noise term from dominating, and
+# starting the search at 0.3 rather than 1.0 biases the optimizer toward
+# that tighter region from the outset. n_restarts_optimizer is raised
+# 2 -> 8 alongside this so the (now more constrained) search reliably
+# converges rather than landing in a worse local optimum on the first try.
 
 
 def fit_regression(x: list[int], y: list[float], alpha: float = 1.0) -> list[float]:
@@ -41,8 +61,8 @@ def fit_regression(x: list[int], y: list[float], alpha: float = 1.0) -> list[flo
 @dataclass
 class TrajectoryFit:
     y_pred_all: np.ndarray       # blended trajectory over every input row
-    ci_lower: np.ndarray         # 95% CI lower band
-    ci_upper: np.ndarray         # 95% CI upper band
+    ci_lower: np.ndarray         # 90% CI lower band
+    ci_upper: np.ndarray         # 90% CI upper band
     split_index: int             # row index where the holdout set begins
     holdout_r2: float | None
     holdout_rmse: float | None
@@ -58,7 +78,7 @@ def fit_trajectory_ensemble(
 
     ``X`` is (n_samples, n_features) ordered chronologically (row 0 =
     earliest); the last ``1 - train_fraction`` rows are held out as an
-    out-of-sample test set. Returns a blended trajectory + 95% CI band over
+    out-of-sample test set. Returns a blended trajectory + 90% CI band over
     every row, plus holdout R²/RMSE (``None`` when the holdout has < 2 rows).
     """
     X = np.atleast_2d(np.asarray(X, dtype=float))
@@ -85,8 +105,8 @@ def fit_trajectory_ensemble(
 
     svr = SVR(kernel="rbf", C=1.0).fit(X_train_s, y_train_s)
     huber = HuberRegressor().fit(X_train_s, y_train_s)
-    kernel = RBF(length_scale=1.0) + WhiteKernel(noise_level=1.0)
-    gpr = GaussianProcessRegressor(kernel=kernel, normalize_y=False, n_restarts_optimizer=2)
+    kernel = RBF(length_scale=1.0) + WhiteKernel(noise_level=0.3, noise_level_bounds=(1e-5, 0.5))
+    gpr = GaussianProcessRegressor(kernel=kernel, normalize_y=False, n_restarts_optimizer=8)
     with warnings.catch_warnings():
         # The optimizer routinely lands near the noise_level lower bound on
         # small, near-flat rolling-window targets; harmless, just noisy.
@@ -169,8 +189,8 @@ def fit_and_forecast(
 
     svr = SVR(kernel="rbf", C=1.0).fit(X_train_s, y_train_s)
     huber = HuberRegressor().fit(X_train_s, y_train_s)
-    kernel = RBF(length_scale=1.0) + WhiteKernel(noise_level=1.0)
-    gpr = GaussianProcessRegressor(kernel=kernel, normalize_y=False, n_restarts_optimizer=2)
+    kernel = RBF(length_scale=1.0) + WhiteKernel(noise_level=0.3, noise_level_bounds=(1e-5, 0.5))
+    gpr = GaussianProcessRegressor(kernel=kernel, normalize_y=False, n_restarts_optimizer=8)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
         gpr.fit(X_train_s, y_train_s)

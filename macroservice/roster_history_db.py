@@ -26,37 +26,15 @@ from __future__ import annotations
 
 from sqlalchemy import Engine, text
 
-_FETCH_SQL = text(
-    """
-    SELECT p.id, p.name, p.debut_year, p.last_active_year, p.active,
-           rs.positions, rs.is_pitcher
-    FROM roster_stints rs
-    JOIN players p ON p.id = rs.player_id
-    WHERE rs.team_id = :team_id
-    """
-)
+from macroservice.sql import load_query
 
-_UPSERT_PLAYER_SQL = text(
-    """
-    INSERT INTO players (id, name, debut_year, last_active_year, active)
-    VALUES (:id, :name, :debut_year, :last_active_year, :active)
-    ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name,
-        debut_year = EXCLUDED.debut_year,
-        last_active_year = EXCLUDED.last_active_year,
-        active = EXCLUDED.active
-    """
-)
-
-_UPSERT_STINT_SQL = text(
-    """
-    INSERT INTO roster_stints (team_id, player_id, positions, is_pitcher)
-    VALUES (:team_id, :player_id, :positions, :is_pitcher)
-    ON CONFLICT (team_id, player_id) DO UPDATE SET
-        positions = EXCLUDED.positions,
-        is_pitcher = EXCLUDED.is_pitcher
-    """
-)
+# Loaded from db/queries/roster_history/*.sql (the single source of truth
+# for this module's SQL text -- see that directory's own file layout)
+# rather than inline strings, so the same query is readable/reviewable
+# outside a Python string and shared with any other consumer that wants it.
+_FETCH_SQL = text(load_query("roster_history", "fetch_team_roster.sql"))
+_UPSERT_PLAYER_SQL = text(load_query("roster_history", "upsert_player_bio.sql"))
+_UPSERT_STINT_SQL = text(load_query("roster_history", "upsert_roster_stint.sql"))
 
 
 def fetch_team_roster_rows(engine: Engine, team_id: int) -> list[dict]:

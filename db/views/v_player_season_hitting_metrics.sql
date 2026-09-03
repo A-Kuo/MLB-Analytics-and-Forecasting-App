@@ -14,8 +14,8 @@ SELECT
     psh.ops,
     psh.home_runs,
     psh.rbi,
-    psh.strike_outs,
-    psh.base_on_balls,
+    psh.strikeouts,
+    psh.walks,
     pssh.xba,
     pssh.avg_exit_velocity,
     pssh.hard_hit_pct,
@@ -23,7 +23,7 @@ SELECT
 FROM player_season_team AS pst
 JOIN players AS p
     ON p.id = pst.player_id
-LEFT JOIN player_season_hitting AS psh
+LEFT JOIN player_season_hitting_stats AS psh
     ON psh.player_id = pst.player_id
    AND psh.season = pst.season
 LEFT JOIN player_statcast_hitting_season AS pssh

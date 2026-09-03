@@ -94,7 +94,7 @@ def build_forecast_figure(
     reveal_upto: int | None = None,
     title: str = "Forecast",
 ) -> go.Figure:
-    """Per selected metric: a shaded 95% CI band, a forecast trend line
+    """Per selected metric: a shaded 90% CI band, a forecast trend line
     spanning [train_end, forecast_end], and actual markers wherever real
     ground truth exists in that same window (``None`` entries in
     ``forecast_by_metric[key]["actual"]`` are skipped, not plotted as 0).
@@ -129,7 +129,7 @@ def build_forecast_figure(
                     x=years + years[::-1],
                     y=ci_upper + ci_lower[::-1],
                     fill="toself", fillcolor=_translucent(color), line={"width": 0},
-                    yaxis=axis, name=f"{acronym} 95% CI", hoverinfo="skip",
+                    yaxis=axis, name=f"{acronym} 90% CI", hoverinfo="skip",
                 )
             )
         fig.add_trace(
@@ -187,7 +187,7 @@ def build_trajectory_figure(payload: dict, series_color: str) -> go.Figure:
             x=x_labels + x_labels[::-1],
             y=payload["ci_upper"] + payload["ci_lower"][::-1],
             fill="toself", fillcolor=CI_FILL_COLOR, line={"width": 0},
-            name="95% CI", hoverinfo="skip",
+            name="90% CI", hoverinfo="skip",
         )
     )
 

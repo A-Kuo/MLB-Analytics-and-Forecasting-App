@@ -13,29 +13,13 @@ team in the lookback window), not a transient failure worth retrying live.
 """
 from __future__ import annotations
 
-from psycopg.rows import dict_row
-
 from sqlalchemy import Engine, text
 
-_FETCH_SQL = text("""
-    SELECT id, team_id, source, headline, thumbnail, link, published_at
-    FROM team_news
-    WHERE team_id = ANY(:team_ids) AND published_at >= now() - make_interval(days => :days)
-    ORDER BY priority ASC, published_at DESC
-    LIMIT :limit
-""")
+from macroservice.sql import load_query
 
-_UPSERT_SQL = text("""
-    INSERT INTO team_news
-        (team_id, source, priority, headline, normalized_headline, thumbnail, link, published_at)
-    VALUES
-        (:team_id, :source, :priority, :headline, :normalized_headline, :thumbnail, :link, :published_at)
-    ON CONFLICT (team_id, normalized_headline) DO UPDATE SET
-        source = EXCLUDED.source, priority = EXCLUDED.priority, thumbnail = EXCLUDED.thumbnail,
-        link = EXCLUDED.link, published_at = EXCLUDED.published_at, ingested_at = now()
-""")
-
-_CLEANUP_SQL = text("DELETE FROM team_news WHERE published_at < now() - make_interval(days => :days)")
+_FETCH_SQL = text(load_query("news", "fetch_team_news.sql"))
+_UPSERT_SQL = text(load_query("news", "upsert_team_news.sql"))
+_CLEANUP_SQL = text(load_query("news", "delete_stale_news.sql"))
 
 
 def fetch_team_news(engine: Engine, team_ids: tuple[int, ...], limit: int = 10, days: int = 7) -> list[dict]:

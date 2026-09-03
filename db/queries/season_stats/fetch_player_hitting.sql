@@ -1,14 +1,3 @@
-SELECT
-    player_id,
-    season,
-    avg,
-    obp,
-    slg,
-    ops,
-    home_runs,
-    rbi,
-    strike_outs,
-    base_on_balls
-FROM player_season_hitting
-WHERE player_id = %s
-  AND season = %s;
+SELECT avg, obp, slg, ops, home_runs, rbi, strikeouts, walks
+FROM player_season_hitting_stats
+WHERE player_id = :player_id AND season = :season;

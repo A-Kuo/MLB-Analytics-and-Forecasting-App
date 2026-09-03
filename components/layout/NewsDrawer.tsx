@@ -71,7 +71,7 @@ export function NewsDrawer({ selectedTeamIds, open, onOpenChange }: NewsDrawerPr
       )}
 
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-surface shadow-xl transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-surface shadow-xl transition-transform duration-(--duration-md) ease-(--ease-primary) ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -80,7 +80,10 @@ export function NewsDrawer({ selectedTeamIds, open, onOpenChange }: NewsDrawerPr
             <h2 className="flex items-center gap-2 text-xl font-bold text-ink-deep">
               <span className="text-mlb-red">MLB</span> News Feed
             </h2>
-            <button onClick={() => onOpenChange(false)} className="text-steel hover:text-ink-deep">
+            <button
+              onClick={() => onOpenChange(false)}
+              className="rounded-full p-2 text-steel transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-surface-soft hover:text-ink-deep"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -137,7 +140,7 @@ export function NewsDrawer({ selectedTeamIds, open, onOpenChange }: NewsDrawerPr
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block rounded-md p-2 transition-colors hover:bg-mlb-link-hover/10"
+                    className="block rounded-md p-2 transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-mlb-link-hover/10"
                   >
                     {item.thumbnail_url && (
                       <img

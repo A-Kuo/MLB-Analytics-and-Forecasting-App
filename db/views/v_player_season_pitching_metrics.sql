@@ -10,8 +10,8 @@ SELECT
     pst.position,
     psp.era,
     psp.whip,
-    psp.strike_outs,
-    psp.base_on_balls,
+    psp.strikeouts,
+    psp.walks,
     psp.innings_pitched,
     psp.earned_runs,
     pssp.csw_pct,
@@ -21,7 +21,7 @@ SELECT
 FROM player_season_team AS pst
 JOIN players AS p
     ON p.id = pst.player_id
-LEFT JOIN player_season_pitching AS psp
+LEFT JOIN player_season_pitching_stats AS psp
     ON psp.player_id = pst.player_id
    AND psp.season = pst.season
 LEFT JOIN player_statcast_pitching_season AS pssp

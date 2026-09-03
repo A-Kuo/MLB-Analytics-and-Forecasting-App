@@ -104,7 +104,7 @@ def test_builds_figure_with_holdout_split():
     trace_names = [trace.name for trace in fig.data]
     assert "Train (actual)" in trace_names
     assert "Holdout (actual)" in trace_names
-    assert "95% CI" in trace_names
+    assert "90% CI" in trace_names
 
 
 def test_builds_figure_with_no_holdout_when_split_equals_n():
@@ -130,7 +130,7 @@ def test_hover_extra_customdata_is_sliced_by_split():
 def test_forecast_figure_has_ci_forecast_and_no_actual_trace_when_absent():
     fig = build_forecast_figure({"ops": _forecast_payload()}, {"ops": "OPS"})
     names = [t.name for t in fig.data]
-    assert "OPS 95% CI" in names
+    assert "OPS 90% CI" in names
     assert "OPS forecast" in names
     assert "OPS actual" not in names
 
@@ -149,7 +149,7 @@ def test_forecast_figure_one_set_of_traces_per_metric():
         {"ops": "OPS", "avg": "AVG"},
     )
     names = {t.name for t in fig.data}
-    assert {"OPS 95% CI", "OPS forecast", "AVG 95% CI", "AVG forecast"} <= names
+    assert {"OPS 90% CI", "OPS forecast", "AVG 90% CI", "AVG forecast"} <= names
 
 
 def test_forecast_figure_reveal_truncates_every_series():
@@ -165,7 +165,7 @@ def test_forecast_figure_reveal_truncates_every_series():
 def test_forecast_figure_skips_empty_series_without_erroring():
     fig = build_forecast_figure({"ops": _forecast_payload(n=0)}, {"ops": "OPS"})
     assert fig is not None
-    assert not any(t.name == "OPS 95% CI" for t in fig.data)
+    assert not any(t.name == "OPS 90% CI" for t in fig.data)
 
 
 def test_forecast_figure_splits_rate_and_counting_stats_across_axes():

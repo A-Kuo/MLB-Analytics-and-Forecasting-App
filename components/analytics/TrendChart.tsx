@@ -1,12 +1,9 @@
 "use client";
 
 import { PlotlyChart } from "@/components/charts/PlotlyChart";
+import { CHART_PALETTE } from "@/lib/chartColors";
 import type { AggregateSeries } from "@/lib/api";
 import { isRateMetric } from "@/lib/metrics";
-
-// Ported from chart.py's METRIC_PALETTE -- assigned in checkbox order so a
-// given metric keeps its color as others are toggled on and off.
-const METRIC_PALETTE = ["#1F77B4", "#D62728", "#2CA02C", "#FF7F0E", "#9467BD", "#8C564B", "#17BECF", "#E377C2"];
 
 type TrendChartProps = {
   seriesByMetric: Record<string, AggregateSeries>;
@@ -28,7 +25,7 @@ export function TrendChart({ seriesByMetric, acronymByMetric, title }: TrendChar
   const data = keys.map((key, index) => {
     const series = seriesByMetric[key];
     const acronym = acronymByMetric[key] ?? key;
-    const color = METRIC_PALETTE[index % METRIC_PALETTE.length];
+    const color = CHART_PALETTE[index % CHART_PALETTE.length];
     const onRateAxis = isRateMetric(key) || !hasRate;
     return {
       x: series.years,

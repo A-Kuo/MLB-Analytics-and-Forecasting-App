@@ -54,7 +54,7 @@ export function TeamSelector({ teams, selectedTeamIds, onChange }: TeamSelectorP
             {row.map((team) => (
               <label
                 key={team.id}
-                className="flex cursor-pointer items-center gap-xs rounded-md px-xs py-xs text-body-sm text-ink hover:bg-surface-soft"
+                className="flex cursor-pointer items-center gap-xs rounded-md px-xs py-xs text-body-sm text-ink transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-surface-soft"
               >
                 <input
                   type="checkbox"

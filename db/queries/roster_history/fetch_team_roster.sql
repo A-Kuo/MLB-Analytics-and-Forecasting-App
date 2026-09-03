@@ -9,7 +9,4 @@ SELECT
 FROM roster_stints AS rs
 JOIN players AS p
     ON p.id = rs.player_id
-WHERE rs.team_id = %s
-ORDER BY
-    p.active DESC,
-    p.name ASC;
+WHERE rs.team_id = :team_id;
