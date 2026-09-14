@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/analytics": "^2.0.1",
     "next": "16.3.3",
     "plotly.js-dist-min": "^4.0.0",
     "react": "19.2.8",
