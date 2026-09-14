@@ -28,13 +28,23 @@
 
 ## Project Overview
 
-Public sports-data APIs are useful for exploration but are a poor direct backend for an interactive analytics product: they can be slow and incomplete for historical records and/or rate-limited during dashboard requests. This project separates data acquisition from user-facing analysis while using a macro-service architecture design.
+Most personal sports-analytics projects fall into one of two traps: a toy dashboard that fetches un-cached REST endpoints live on every click and times out under rate limits, or a clean statistical notebook trained on a static CSV with no pipeline or interface behind it. This project's goal is to bridge production data engineering and applied predictive modeling instead of picking one side of that trade-off — an end-to-end platform that decouples high-latency, heterogeneous external data acquisition from an interactive, cache-aware analytical serving layer.
 
-My data-engineering layer uses cache-aware ingestion and scheduled workflow pipelines to load public messy, semi-structured MLB, Statcast, and RSS data into a Neon PostgreSQL analytics data mart. It applies idempotent upserts, retry/backoff controls, and dataset-specific freshness policies so that historical data can be retrieved reliably without repeatedly calling upstream sources.
+### Problems solved
 
-My analytics layer uses this curated datastore to compute and explain KPIs, rate- and count-stat aggregations, season leaderboards, historical time series, rolling sabermetrics, team/player cohorts, and interactive visualizations. Counting statistics are aggregated by summation, while rate statistics are aggregated by mean so multi-player comparisons remain statistically interpretable. You can check it out on the streamlit link. Note that the streamlit is a prototype dashboard with all frontend being ported to Vercel, so elements of the macro-service communicating with the datastore may break.
+**The upstream data bottleneck.** The public MLB Stats API and Baseball Savant (Statcast) endpoints aren't built for direct, user-facing analytical queries — a single leaderboard spanning 30 teams and 20+ metrics would otherwise require thousands of nested REST calls, with 30+ second latency and frequent rate-limiting or timeouts. This project instead runs a two-tier, self-healing data mart on Neon PostgreSQL: upstream data is ingested asynchronously on a schedule (news every 6 hours, rosters monthly, season/leaderboard data on demand), stored with idempotent upserts, and queried locally at sub-second latency. On a cache miss, a controlled fallback retrieves live data and writes it back to Postgres to warm the cache.
 
-The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors—including Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, HistGradientBoosting, and ensemble baselines—are evaluated with chronological train/validation splits and walk-forward cross-validation. Performance is reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
+**Naive temporal validation.** Random train/test splits (standard K-fold cross-validation) leak future performance into historical predictions for time-ordered player data, and a single fixed regression blend assumes one model shape fits every player's distribution. This project instead uses a leakage-free walk-forward validation harness (`TimeSeriesSplit`) across a multi-model zoo — Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, and HistGradientBoosting — with hyperparameters tuned strictly on historical folds so temporal integrity is preserved.
+
+**Unprincipled metric aggregation.** In sabermetrics, counting stats (home runs) and rate stats (batting average, ERA) can't be combined the same way, and mixing hitting and pitching metrics produces meaningless numbers. This project uses a position-aware taxonomy that isolates hitting from pitching, sums counting metrics across a chosen cohort, and averages rate metrics instead.
+
+### Architecture layers
+
+The data-engineering layer uses cache-aware ingestion and scheduled workflow pipelines to load messy, semi-structured MLB, Statcast, and RSS data into the Neon PostgreSQL analytics data mart described above, applying idempotent upserts, retry/backoff controls, and dataset-specific freshness policies so historical data can be retrieved reliably without repeatedly calling upstream sources.
+
+The analytics layer uses this curated datastore to compute and explain KPIs, rate- and count-stat aggregations, season leaderboards, historical time series, rolling sabermetrics, team/player cohorts, and interactive visualizations, using the counting-vs-rate aggregation rules above so multi-player comparisons stay statistically interpretable. You can check it out on the streamlit link. Note that the streamlit is a prototype dashboard with all frontend being ported to Vercel, so elements of the macro-service communicating with the datastore may break.
+
+The machine-learning layer treats player performance as an ordered time-series regression problem. It transforms player game logs and Statcast observations into rolling targets and feature matrices containing wOBA-style offensive aggregates, FIP-oriented pitching measures, momentum, rest days, home/away context, velocity, whiff rate, and batted-ball-quality variables. Candidate regressors are evaluated with chronological train/validation splits and walk-forward cross-validation, per the leakage-free approach above, and reported with \(R^2\), RMSE, and MAE to compare predictive fit and absolute forecast error without temporal leakage.
 
 ---
 
@@ -213,6 +223,10 @@ flowchart LR
     DOMAIN -. Statcast retrieval .-> SAVANT
 ```
 
+The diagram above is a three-layer "sandwich": a persistence/data-engineering layer at the bottom (Neon PostgreSQL, scheduled scrapers, resilient schemas), an application/analytics layer in the middle (the metric registry, position grouping, and sabermetric feature engineering), and a presentation/ML layer on top (forecasting and interactive visualizations). Keeping these layers separate is what lets the data-engineering work stay correct independent of which frontend renders it.
+
+In the Streamlit dashboard specifically, un-gated controls would trigger a full-page rerun on every click. Parameter selection (toggling metrics, selecting player checkboxes) is deliberately decoupled from query execution via explicit Calculate/Visualize/Forecast action buttons, so adjusting inputs doesn't recompute or grey out the UI until the user asks for it.
+
 ### Neon PostgreSQL datastore (Native Migration Completed)
 
 Neon PostgreSQL acts as a domain-specific MLB analytics datastore rather than an enterprise-scale data lake. It stores curated, relational data needed by the application, including player biographies, roster history, team-season associations, player season statistics, Statcast aggregates, leaderboard inputs, and team-news records.
@@ -254,6 +268,8 @@ The database is designed for application-serving and analytical queries rather t
 ## Analytical and ML Computations
 
 If you want to know more about the mathematics I used in the data selection, and especially in the machine learning side, see below.
+
+Rather than treating machine learning as a black box, each candidate regressor below was chosen for a specific bias-variance trade-off relevant to small-sample, autocorrelated time-series data: a strict linear baseline, a robust alternative for heavy-tailed noise, a non-parametric option for non-linear trajectories, a model that natively quantifies its own uncertainty, and tree-based baselines for interaction effects. The model-evaluation workflow tests all of them across each player's rolling windows and selects a production model per position-group by minimum walk-forward RMSE/MAE, rather than assuming any one of them wins in general.
 
 ### Metric-aware cohort aggregation
 
@@ -364,7 +380,11 @@ $$
 
 
 
-The first term minimizes squared prediction error, while the $\(L_2\)$ penalty shrinks large coefficients and helps stabilize estimates when features are correlated.
+The first term minimizes squared prediction error, while the $\(L_2\)$ penalty shrinks large coefficients and helps stabilize estimates when features are correlated — useful since rolling features like momentum and recent OPS are often highly collinear.
+
+### Robust and non-linear regressors
+
+Baseball performance metrics are prone to heavy-tailed noise — slumps, single-game outliers, blowout relief appearances — so the model zoo includes a Huber Regressor, which applies an \(L_1\) penalty to large residuals and an \(L_2\) penalty to small ones, trading some efficiency for robustness against those outliers. It also includes an RBF-kernel Support Vector Regressor to capture non-linear fatigue curves and sudden mid-season adjustments without assuming a fixed parametric trajectory, and Random Forest / HistGradientBoosting regressors as non-parametric tree-based baselines capable of modeling interaction effects between physical context (rest days, home/away) and performance momentum.
 
 ### Ensemble regression baseline
 
@@ -378,7 +398,7 @@ The model-evaluation workflow compares this fixed weighted blend against candida
 
 ### Gaussian Process predictive uncertainty
 
-When Gaussian Process Regression is used, the model provides both a mean prediction and an estimated predictive standard deviation:
+Unlike the deterministic regressors above, Gaussian Process Regression natively quantifies its own uncertainty rather than just returning a point estimate. Using an RBF-plus-white-noise kernel, the model provides both a mean prediction and an estimated predictive standard deviation:
 
 $$
 \hat{y}_t \sim \mathcal{N}(\mu_t, \sigma_t^2)
@@ -466,6 +486,12 @@ Current-season data is mutable and requires periodic refreshes; completed histor
 Forecasting results depend on the volume and quality of player history and should be interpreted as analytical estimates rather than guarantees.
 
 The Streamlit application is the primary user interface. The Next.js application should be labeled according to its current maturity level.
+
+---
+
+## Project Summary
+
+This platform was built to address the architectural and statistical limitations common to sports-data side projects: public sports APIs are slow, rate-limited, and lack unified sabermetric querying, while sports ML tutorials often suffer from look-ahead leakage. It combines an idempotent PostgreSQL data mart on Neon, automated ingestion pipelines with circuit-breaker resilience, and a walk-forward-validated regression zoo evaluated with chronological cross-validation — turning raw, noisy event telemetry into an interactive, sub-second analytics and forecasting platform, rather than either a live-fetching toy dashboard or a notebook detached from a real pipeline.
 
 ---
 

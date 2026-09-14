@@ -31,7 +31,7 @@ const PITCHING_METRICS: Record<string, { table: string; column: string; ascendin
 export async function getInsightsLeaderboard(metricKey: string, group: string, season: number, teamIds: number[], limit = 10) {
   const registry = group === "pitching" ? PITCHING_METRICS : HITTING_METRICS;
   const metricConfig = registry[metricKey];
-  
+
   if (!metricConfig) {
     throw new Error(`Invalid metric: ${metricKey} for group: ${group}`);
   }
@@ -39,15 +39,32 @@ export async function getInsightsLeaderboard(metricKey: string, group: string, s
   const { table, column, ascending } = metricConfig;
   const order = ascending ? "ASC" : "DESC";
 
-  // Use string concatenation for table and column, which is safe since we got them from our own registry
+  // Use string concatenation for table and column, which is safe since we got them from our own registry.
+  //
+  // Team membership is filtered via EXISTS against player_season_team, not
+  // a JOIN + SELECT DISTINCT: a player traded between two selected teams
+  // has two membership rows for the same season, so a plain JOIN
+  // multiplies the outer row (same metric_value twice) and needs
+  // DISTINCT to clean up after -- forcing Postgres to sort+dedupe the
+  // whole result before LIMIT can apply. EXISTS is a semi-join (just
+  // "does a qualifying row exist"), so there's nothing to deduplicate.
+  //
+  // The secondary `p.id ASC` tiebreaker is a real bug fix: without it,
+  // whenever more players are tied on the metric than fit under LIMIT,
+  // Postgres can return a different arbitrary subset of the tied players
+  // on every call (confirmed directly against this exact query) -- a
+  // leaderboard flickering between different "#10" players on reload.
   const sql = `
-    SELECT DISTINCT p.id::int AS player_id, p.name, p.debut_year, p.last_active_year, p.active,
+    SELECT p.id::int AS player_id, p.name, p.debut_year, p.last_active_year, p.active,
            m.${column} AS metric_value
     FROM ${table} m
-    JOIN player_season_team pst ON pst.player_id = m.player_id AND pst.season = m.season
     JOIN players p ON p.id = m.player_id
-    WHERE m.season = $1 AND pst.team_id = ANY($2) AND m.${column} IS NOT NULL
-    ORDER BY m.${column} ${order}
+    WHERE m.season = $1 AND m.${column} IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM player_season_team pst
+        WHERE pst.player_id = m.player_id AND pst.season = m.season AND pst.team_id = ANY($2)
+      )
+    ORDER BY m.${column} ${order}, p.id ASC
     LIMIT $3
   `;
 

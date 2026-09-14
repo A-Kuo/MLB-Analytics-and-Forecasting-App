@@ -86,8 +86,12 @@ def top_players_by_metric(
     """Top ``limit`` players for one metric/season among ``team_ids``.
 
     Each result dict has player_id/name/debut_year/last_active_year/active/
-    metric_value. See db/queries/insights/leaderboard.sql for the dedupe
-    rationale (a plain SELECT DISTINCT, not DISTINCT ON + a subquery).
+    metric_value. See db/queries/insights/leaderboard.sql for why the
+    SELECT DISTINCT there is load-bearing, not a workaround to remove (the
+    view's own grain is per player+team+season, so a traded player has two
+    real view rows to collapse), and for the deterministic secondary sort
+    (a real correctness fix -- ties at the LIMIT boundary were previously
+    resolved arbitrarily, confirmed directly).
 
     ``view``/``column`` are interpolated from the fixed registries above
     (never from caller-supplied input), so this isn't a SQL-injection
