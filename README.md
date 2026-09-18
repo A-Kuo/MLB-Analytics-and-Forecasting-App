@@ -30,6 +30,12 @@
 
 Most personal sports-analytics projects fall into one of two traps: a toy dashboard that fetches un-cached REST endpoints live on every click and times out under rate limits, or a clean statistical notebook trained on a static CSV with no pipeline or interface behind it. This project's goal is to bridge production data engineering and applied predictive modeling instead of picking one side of that trade-off — an end-to-end platform that decouples high-latency, heterogeneous external data acquisition from an interactive, cache-aware analytical serving layer.
 
+## Screenshot
+
+<img width="330" height="638" alt="image" src="https://github.com/user-attachments/assets/3c576d7a-958a-4b94-9a97-540f4802fbb5" />
+
+
+
 ### Problems solved
 
 **The upstream data bottleneck.** The public MLB Stats API and Baseball Savant (Statcast) endpoints aren't built for direct, user-facing analytical queries — a single leaderboard spanning 30 teams and 20+ metrics would otherwise require thousands of nested REST calls, with 30+ second latency and frequent rate-limiting or timeouts. This project instead runs a two-tier, self-healing data mart on Neon PostgreSQL: upstream data is ingested asynchronously on a schedule (news every 6 hours, rosters monthly, season/leaderboard data on demand), stored with idempotent upserts, and queried locally at sub-second latency. On a cache miss, a controlled fallback retrieves live data and writes it back to Postgres to warm the cache.
