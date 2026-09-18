@@ -13,6 +13,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "MLB Analytics Dashboard",
   description: "Player and team analytics, forecasts, and season leaderboards.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
