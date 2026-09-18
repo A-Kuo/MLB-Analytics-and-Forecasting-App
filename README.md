@@ -30,9 +30,11 @@
 
 Most personal sports-analytics projects fall into one of two traps: a toy dashboard that fetches un-cached REST endpoints live on every click and times out under rate limits, or a clean statistical notebook trained on a static CSV with no pipeline or interface behind it. This project's goal is to bridge production data engineering and applied predictive modeling instead of picking one side of that trade-off — an end-to-end platform that decouples high-latency, heterogeneous external data acquisition from an interactive, cache-aware analytical serving layer.
 
-## Screenshot
+## Screenshot Demos
 
-<img width="330" height="638" alt="image" src="https://github.com/user-attachments/assets/3c576d7a-958a-4b94-9a97-540f4802fbb5" />
+<img width="646" height="686" alt="image" src="https://github.com/user-attachments/assets/e5a14070-d7f2-4099-a50b-668cc0dabb5f" /> <img width="635" height="564" alt="image" src="https://github.com/user-attachments/assets/eab39e35-ae27-4680-8ea7-b610f3fce015" />
+
+
 
 
 
