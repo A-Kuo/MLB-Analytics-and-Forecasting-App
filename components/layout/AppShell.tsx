@@ -14,11 +14,19 @@ function AppShellInner({ children }: AppShellProps) {
   const { teamIds } = useNewsTeamIds();
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      <TopNav onToggleNews={() => setNewsOpen(!newsOpen)} />
-      <main className="flex-1">
-        {children}
-      </main>
+    <div className="min-h-screen bg-canvas">
+      {/* Reserves the drawer's width (max-w-96) on md+ so the open feed sits
+          beside the page instead of covering it. */}
+      <div
+        className={`flex min-h-screen flex-col transition-[padding] duration-(--duration-md) ease-(--ease-primary) ${
+          newsOpen ? "md:pr-96" : ""
+        }`}
+      >
+        <TopNav onToggleNews={() => setNewsOpen(!newsOpen)} />
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
       <NewsDrawer
         selectedTeamIds={teamIds}
         open={newsOpen}
