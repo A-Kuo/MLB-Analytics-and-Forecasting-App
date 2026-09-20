@@ -71,7 +71,7 @@ export function NewsDrawer({ selectedTeamIds, open, onOpenChange }: NewsDrawerPr
       )}
 
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm transform bg-surface shadow-xl transition-transform duration-(--duration-md) ease-(--ease-primary) ${
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-96 transform bg-surface shadow-xl transition-transform duration-(--duration-md) ease-(--ease-primary) ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
