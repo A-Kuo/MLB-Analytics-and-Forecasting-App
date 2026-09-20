@@ -7,7 +7,10 @@
  * system (base/muted/background/focused). MLB red keeps the "primary
  * accent" role rather than switching to Retool's own blue -- Retool's
  * other hues (blue/green/orange/purple/...) are kept as the app's
- * secondary accent set (chart palette, future semantic states). Token
+ * secondary accent set (chart palette, future semantic states).
+ * SUPERSEDED (color pass): neutrals now follow a Geist-style near-black
+ * scheme and the interactive accent is Vercel blue (#0070f3, with pink
+ * #ff0080 as the second accent). MLB red is now brand-only (wordmark). Token
  * NAMES are unchanged from the app's own prior charcoal theme so nothing
  * referencing them needs renaming -- only values/additions changed.
  * "Saans"/"pxGrotesk" in the source extract are Retool's own proprietary
@@ -30,8 +33,8 @@
   --color-mlb-red-background: #4a1216;
   --color-mlb-red-muted: #ebadb2;
   --color-mlb-navy: #002d72;
-  --color-mlb-link: #e0e0e0;
-  --color-mlb-link-hover: #6699cc;
+  --color-mlb-link: #ededed;
+  --color-mlb-link-hover: #3291ff;
 
   /* Secondary accent hues -- chart palette (lib/chartColors.ts mirrors
      these as literal hex, since Plotly doesn't resolve CSS vars) and
@@ -39,10 +42,10 @@
      extract had them (blue/green/orange/purple); focused-only for the
      rest (no full source data -- not invented). Namespaced --color-accent-*
      to avoid colliding with Tailwind v4's own built-in numbered scales. */
-  --color-accent-blue: #518dd2;
-  --color-accent-blue-base: #2d4c71;
-  --color-accent-blue-background: #1b2e44;
-  --color-accent-blue-muted: #b0ccea;
+  --color-accent-blue: #0070f3;
+  --color-accent-blue-base: #0059c9;
+  --color-accent-blue-background: #0b1f3a;
+  --color-accent-blue-muted: #79b8ff;
   --color-accent-green: #4d9987;
   --color-accent-green-base: #185849;
   --color-accent-green-background: #0e352c;
@@ -55,24 +58,27 @@
   --color-accent-purple-base: #53397c;
   --color-accent-purple-background: #3f2a68;
   --color-accent-purple-muted: #d0c1ea;
-  --color-accent-pink: #cc64ce;
+  --color-accent-pink: #ff0080;
+  --color-accent-pink-base: #c7006a;
+  --color-accent-pink-background: #4a0a2a;
+  --color-accent-pink-muted: #ff80bf;
   --color-accent-yellow: #eca438;
-  --color-accent-lime: #e0d643;
-  --color-accent-gray: #8b867f;
+  --color-accent-gray: #888888;
 
-  --color-canvas: #151515;
-  --color-canvas-deep: #0e0e0e;
-  --color-surface: #242424;
-  --color-surface-soft: #1e1e1e;
-  --color-hairline: #3d3d3d;
-  --color-hairline-soft: #333333;
-  --color-hairline-strong: #4d4d4d;
-  --color-ink-deep: #e9ebdf;
-  --color-ink: #cbccc4;
-  --color-slate: #b6b8af;
-  --color-steel: #9ea098;
-  --color-stone: #868881;
-  --color-muted: #6e706a;
+  /* Neutrals -- Geist-style near-black canvas, hairline borders. */
+  --color-canvas: #0a0a0a;
+  --color-canvas-deep: #000000;
+  --color-surface: #111111;
+  --color-surface-soft: #1a1a1a;
+  --color-hairline: #333333;
+  --color-hairline-soft: #262626;
+  --color-hairline-strong: #444444;
+  --color-ink-deep: #ffffff;
+  --color-ink: #ededed;
+  --color-slate: #a1a1a1;
+  --color-steel: #888888;
+  --color-stone: #7d7d7d;
+  --color-muted: #666666;
 
   /* Semantic -- 4-weight each (focused/base/background/muted), matching
      the source extract's mid/dark/darkest/light steps. */
@@ -108,7 +114,7 @@
     rgb(180, 152, 215) 77.04%,
     rgb(176, 204, 234) 100%
   );
-  --gradient-accent-bar: linear-gradient(90deg, var(--color-ink-deep) 0%, var(--color-mlb-red) 100%);
+  --gradient-accent-bar: linear-gradient(90deg, var(--color-accent-blue) 0%, var(--color-accent-pink) 100%);
 
   /* rounded.* */
   --radius-xs: 4px;

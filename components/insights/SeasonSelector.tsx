@@ -28,7 +28,7 @@ export function SeasonSelector({
         id="season-select"
         value={selectedSeason}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="rounded-md border border-hairline-strong bg-surface px-3 py-1.5 text-body-sm text-ink focus:border-mlb-red focus:outline-none focus:ring-1 focus:ring-mlb-red"
+        className="rounded-md border border-hairline-strong bg-surface px-3 py-1.5 text-body-sm text-ink focus:border-accent-blue focus:outline-none focus:ring-1 focus:ring-accent-blue"
       >
         {years.map((year) => (
           <option key={year} value={year}>

@@ -65,7 +65,7 @@ export function PlayerSelector({ roster, startYear, endYear, selectedIds, onChan
                       checked={checked}
                       disabled={ids.size === 0}
                       onChange={(e) => toggleGroup(ids, e.target.checked)}
-                      className="accent-mlb-red"
+                      className="accent-accent-blue"
                     />
                     {pos}
                   </label>
@@ -96,7 +96,7 @@ export function PlayerSelector({ roster, startYear, endYear, selectedIds, onChan
                     else next.delete(p.id);
                     onChange(next);
                   }}
-                  className="accent-mlb-red"
+                  className="accent-accent-blue"
                 />
                 [{p.positions.join(", ")}] {p.name} ({years})
               </label>

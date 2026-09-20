@@ -65,7 +65,7 @@ export function TeamSelector({ teams, selectedTeamIds, onChange }: TeamSelectorP
                     else next.delete(team.id);
                     onChange(next);
                   }}
-                  className="accent-mlb-red"
+                  className="accent-accent-blue"
                 />
                 <Image src={team.logo_url} alt="" width={20} height={20} unoptimized />
                 <span className="truncate">{team.name}</span>
@@ -82,7 +82,7 @@ export function TeamSelector({ teams, selectedTeamIds, onChange }: TeamSelectorP
             type="checkbox"
             checked={isSuperset(selectedTeamIds, allTeamIds)}
             onChange={(e) => onChange(toggleGroup(selectedTeamIds, allTeamIds, e.target.checked))}
-            className="accent-mlb-red"
+            className="accent-accent-blue"
           />
           All Teams
         </label>
@@ -96,7 +96,7 @@ export function TeamSelector({ teams, selectedTeamIds, onChange }: TeamSelectorP
                   type="checkbox"
                   checked={isSuperset(selectedTeamIds, leagueIds)}
                   onChange={(e) => onChange(toggleGroup(selectedTeamIds, leagueIds, e.target.checked))}
-                  className="accent-mlb-red"
+                  className="accent-accent-blue"
                 />
                 {label}
               </label>
@@ -113,7 +113,7 @@ export function TeamSelector({ teams, selectedTeamIds, onChange }: TeamSelectorP
                       type="checkbox"
                       checked={isSuperset(selectedTeamIds, divisionIds)}
                       onChange={(e) => onChange(toggleGroup(selectedTeamIds, divisionIds, e.target.checked))}
-                      className="accent-mlb-red"
+                      className="accent-accent-blue"
                     />
                     {division}
                   </label>

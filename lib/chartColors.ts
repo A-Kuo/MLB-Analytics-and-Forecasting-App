@@ -1,25 +1,22 @@
 /**
- * Shared chart color constants for TrendChart.tsx and ForecastChart.tsx --
- * previously each hardcoded its own identical, unrelated D3/Plotly stock
- * palette (`["#1F77B4", "#D62728", ...]`). Plotly's trace/layout objects
- * don't resolve `var(--...)` CSS custom properties (they aren't a real DOM
- * style path), so these are literal hex values, each comment-linked to its
- * app/globals.css source of truth -- keep the two files in sync manually
- * when either changes.
+ * Shared multi-series palette for Plotly charts. Plotly's trace/layout
+ * objects don't resolve CSS custom properties, so these are literal hex
+ * values mirroring the --color-* tokens in app/globals.css -- update both
+ * together. Leads with Vercel blue/pink; MLB red is last (brand color, not
+ * a primary data hue) and no neon hues are used.
  */
-
 export const CHART_PALETTE = [
-  "#bd3039", // --color-mlb-red (focused)
-  "#518dd2", // --color-accent-blue
+  "#0070f3", // --color-accent-blue
+  "#ff0080", // --color-accent-pink
   "#4d9987", // --color-accent-green
   "#e8765e", // --color-accent-orange
   "#9874d2", // --color-accent-purple
-  "#cc64ce", // --color-accent-pink
   "#eca438", // --color-accent-yellow
-  "#e0d643", // --color-accent-lime
+  "#888888", // --color-accent-gray
+  "#bd3039", // --color-mlb-red
 ];
 
-export const CHART_MARKER_OUTLINE = "#0e0e0e"; // --color-canvas-deep
+export const CHART_MARKER_OUTLINE = "#000000"; // --color-canvas-deep
 
 export function withAlpha(hex: string, alpha = 0.15): string {
   const h = hex.replace("#", "");

@@ -41,7 +41,7 @@ export function TopNav({ onToggleNews }: TopNavProps) {
                   href={link.href}
                   className={
                     active
-                      ? "border-b-2 border-mlb-red py-4 text-sm font-medium text-ink-deep"
+                      ? "border-b-2 border-accent-blue py-4 text-sm font-medium text-ink-deep"
                       : "py-4 text-sm font-medium text-steel transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:text-ink-deep"
                   }
                 >
