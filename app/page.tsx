@@ -6,17 +6,17 @@ const LAYERS: { title: string; body: string }[] = [
   {
     title: "Data engineering",
     body:
-      "Scheduled GitHub Actions jobs pull rosters, season stats, Statcast telemetry, and team news from the MLB Stats API, Baseball Savant, and RSS/Atom feeds, then write them into Neon Postgres through idempotent upserts -- reruns never duplicate rows.",
+      "Scheduled GitHub Actions jobs pull rosters, season stats, Statcast telemetry, and team news from the MLB Stats API, Baseball Savant, and RSS/Atom feeds, then write them into Neon Postgres through idempotent upserts to prevent duplications.",
   },
   {
     title: "Analytics",
     body:
-      "A metric registry and position-aware taxonomy keep hitting and pitching separate and apply the right aggregation rule per stat -- counting stats sum across a cohort, rate stats average -- so multi-player comparisons stay statistically meaningful.",
+      "A metric registry and position-aware taxonomy keep hitting and pitching separate and apply the right aggregation rule per stat.",
   },
   {
     title: "Forecasting & UI",
     body:
-      "Rolling features feed a walk-forward-validated regression zoo, and the Next.js frontend (backed by the same Postgres data) renders the results as leaderboards, trend charts, and forecast bands with confidence intervals.",
+      "Rolling features feed a walk-forward-validated regression zoo, and the Next.js frontend renders the results as leaderboards, trend charts, and forecast bands with confidence intervals.",
   },
 ];
 
@@ -57,21 +57,12 @@ export default function HomePage() {
       <section className="flex flex-col gap-sm">
         <h2 className="text-heading-3 text-ink-deep">What this is</h2>
         <p className="text-body-md text-ink">
-          Most personal sports-analytics projects pick one of two shortcuts: a dashboard that calls a live,
-          rate-limited public API on every click, or a clean model trained in a notebook with no pipeline or
-          interface behind it. This project bridges both halves -- a cache-aware Postgres data mart decouples slow,
-          heterogeneous data acquisition from the interactive layer, so leaderboards and charts stay fast while the
-          forecasting side stays methodologically honest: chronological validation, an evaluated model zoo, and a
-          real confidence interval instead of a single point guess.
+          MLB stats and telemetry pulling cache-aware Postgres data mart with
+          heterogeneous data acquisition.
         </p>
       </section>
 
       <section className="flex flex-col gap-md">
-        <h2 className="text-heading-3 text-ink-deep">System architecture</h2>
-        <p className="text-body-md text-ink">
-          The app is built in three layers, each independent of how the others are consumed -- the same Postgres
-          data mart serves both the legacy Streamlit prototype and this Next.js frontend.
-        </p>
         <div className="grid gap-sm sm:grid-cols-3">
           {LAYERS.map((layer) => (
             <div key={layer.title} className="rounded-md border border-hairline bg-surface p-md">
@@ -87,7 +78,7 @@ export default function HomePage() {
         <p className="text-body-md text-ink">
           Standard box-score stats come from the MLB Stats API; pitch- and batted-ball-level telemetry -- exit
           velocity, launch angle, expected batting average, hard-hit rate, whiff and chase rate, pitch velocity --
-          comes from Baseball Savant&apos;s Statcast data (available from 2015 onward). Both feed a rolling-window
+          comes from Baseball Savant&apos;s Statcast data (available only from 2015 onward). Both feed a rolling-window
           transform: a trailing average smooths game-to-game noise into a time-dependent target, and a shorter
           rolling window over that target becomes a momentum feature, alongside rest days, home/away context, and
           the Statcast fields above as the supervised feature vector.
@@ -99,9 +90,7 @@ export default function HomePage() {
         <p className="text-body-md text-ink">
           Forecasts are validated with <code className="text-body-sm-medium text-accent-blue">TimeSeriesSplit</code>{" "}
           walk-forward cross-validation, not a random train/test split -- each fold trains only on data available
-          before the window it&apos;s scored against, so no future performance leaks into a historical prediction.
-          Six candidate regressors are evaluated per player, chosen for distinct bias-variance trade-offs rather than
-          picked by default:
+          before the window it&apos;s scored against.
         </p>
         <div className="grid gap-xs sm:grid-cols-2">
           {MODELS.map((m) => (
@@ -122,9 +111,7 @@ export default function HomePage() {
       <section className="flex flex-col gap-sm">
         <h2 className="text-heading-3 text-ink-deep">Postgres as a data mart</h2>
         <p className="text-body-md text-ink">
-          Neon Postgres holds a curated, relational data mart -- player biographies, roster history,
-          team-season membership, season stats, Statcast aggregates, leaderboard inputs, and team news -- rather
-          than a raw copy of every upstream API response. Writes go through <code className="text-body-sm-medium text-accent-blue">ON CONFLICT</code>{" "}
+          Neon Postgres holds a curated, relational data mart. Writes go through <code className="text-body-sm-medium text-accent-blue">ON CONFLICT</code>{" "}
           upserts, so a rerun of a backfill or ingestion job is always safe. Reads are Postgres-first with a
           controlled live-API fallback where that makes sense (a single player&apos;s roster history); leaderboards
           and team news skip the fallback entirely, since a live call for a 30-team, 20-metric leaderboard would mean
@@ -139,10 +126,9 @@ export default function HomePage() {
       <section className="flex flex-col gap-sm">
         <h2 className="text-heading-3 text-ink-deep">Next.js frontend</h2>
         <p className="text-body-md text-ink">
-          This frontend is a phased rewrite of the original Streamlit app onto Next.js&apos;s App Router, deployed on
+          This frontend is a rewrite of a prototype Streamlit app onto Next.js&apos;s App Router, deployed on
           Vercel. Route handlers under <code className="text-body-sm-medium text-accent-blue">app/api</code> query
-          Neon directly through its serverless HTTP driver rather than a pooled TCP connection -- a better fit for
-          Vercel&apos;s stateless functions -- while the heavier regression fitting still routes through the Python
+          Neon directly through its serverless HTTP driver rather than a pooled TCP connection while the heavier regression fitting still routes through the Python
           FastAPI service. The interface itself favors letting the underlying data drive layout decisions: sections
           fold away when their results aren&apos;t needed, controls sit beside results instead of stacking above
           them on wide screens, and a live scoreboard strip reflects today&apos;s games without leaving the page.
