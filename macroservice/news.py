@@ -18,6 +18,7 @@ were deferred rather than built.
 """
 from __future__ import annotations
 
+import html as html_module
 import logging
 import os
 import re
@@ -75,6 +76,26 @@ def _rss_image_by_link(xml_bytes: bytes) -> dict[str, str]:
             if href:
                 images_by_link[link_el.text.strip()] = href
     return images_by_link
+
+
+def _first_img_src(html: str) -> str | None:
+    """First `<img src="...">` in an HTML fragment -- SB Nation's Atom feed
+    (confirmed live against pinstripealley.com/rss/index.xml and others)
+    has no `<media:thumbnail>` or `<link rel="enclosure">` at all; every
+    entry's lead image is just an inline `<img>` inside its
+    `<content type="html">` body (e.g. `<figure><img src="...jpg"></figure>`
+    before the article text). This is the actual thumbnail source for that
+    feed, not a fallback.
+    """
+    match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', html)
+    if not match:
+        return None
+    # WordPress's esc_url() HTML-entity-escapes the src's own "&" as
+    # "&#038;" (confirmed live) -- fine for an HTML renderer, but a raw
+    # <img src> attribute set via the DOM (React's src={...}) is never
+    # HTML-entity-decoded, so left as-is this breaks the URL's query
+    # string (the literal text "#038;strip" instead of "&strip").
+    return html_module.unescape(match.group(1))
 
 
 def _is_within_lookback(entry, cutoff: datetime) -> bool:
@@ -179,9 +200,10 @@ def fetch_sbnation_articles(team_id: int, days: int) -> list[dict]:
     """One team's SB Nation blog Atom feed -- confirmed live at
     ``{blog_url}/rss/index.xml`` for every team in SBNATION_URLS (see
     macroservice/config/news_sources.py). feedparser handles Atom the same
-    as RSS, so this reuses the exact same parsing shape as fetch_mlb_articles;
-    SB Nation's feed has no non-standard image tag, so thumbnails come from
-    feedparser's own media/enclosure parsing when present.
+    as RSS, so this reuses the exact same parsing shape as
+    fetch_mlb_articles. SB Nation's feed carries no `<media:thumbnail>` or
+    `<link rel="enclosure">` -- see _first_img_src for where its lead image
+    actually lives.
 
     Unlike MLB.com, SB Nation's CDN 403s a plain requests.get with no
     User-Agent (confirmed live) -- a browser-like one is required here,
@@ -199,11 +221,8 @@ def fetch_sbnation_articles(team_id: int, days: int) -> list[dict]:
         if not _is_within_lookback(entry, cutoff):
             continue
         published = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
-        thumbnail = None
-        if entry.get("media_thumbnail"):
-            thumbnail = entry["media_thumbnail"][0].get("url")
-        elif entry.get("links"):
-            thumbnail = next((link.get("href") for link in entry["links"] if link.get("rel") == "enclosure"), None)
+        html = entry["content"][0]["value"] if entry.get("content") else entry.get("summary")
+        thumbnail = _first_img_src(html) if html else None
         out.append(
             {
                 "source": "SBNation",

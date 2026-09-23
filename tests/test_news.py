@@ -202,7 +202,10 @@ def test_fetch_mlb_articles_returns_empty_for_unknown_team(mock_url):
 
 
 # ---------------------------------------------------------------------------
-# fetch_sbnation_articles -- Atom feed, no non-standard image tag
+# fetch_sbnation_articles -- Atom feed. Confirmed live against real team
+# feeds: SB Nation carries no <media:thumbnail>/<link rel="enclosure">, so
+# every entry's thumbnail comes from the first <img> inside its
+# <content type="html"> body instead (see _first_img_src).
 # ---------------------------------------------------------------------------
 
 SBNATION_ATOM_SAMPLE = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -218,6 +221,23 @@ SBNATION_ATOM_SAMPLE = f"""<?xml version="1.0" encoding="UTF-8"?>
 </feed>
 """.encode()
 
+SBNATION_ATOM_WITH_IMAGE = f"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Pinstripe Alley</title>
+  <entry>
+    <title>Cole dazzles again</title>
+    <link href="https://www.pinstripealley.com/news/cole-dazzles" />
+    <id>https://www.pinstripealley.com/news/cole-dazzles</id>
+    <published>{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}</published>
+    <updated>{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}</updated>
+    <content type="html"><![CDATA[
+      <figure><img src="https://platform.pinstripealley.com/photo.jpg?quality=90&#038;strip=all" /></figure>
+      <p>Cole was dominant tonight.</p>
+    ]]></content>
+  </entry>
+</feed>
+""".encode()
+
 
 @patch("macroservice.news.request_with_backoff")
 def test_fetch_sbnation_articles_tags_source_and_priority(mock_request):
@@ -227,6 +247,23 @@ def test_fetch_sbnation_articles_tags_source_and_priority(mock_request):
     assert articles[0]["source"] == "SBNation"
     assert articles[0]["headline"] == "Cole dazzles again"
     assert articles[0]["link"] == "https://www.pinstripealley.com/news/cole-dazzles"
+
+
+@patch("macroservice.news.request_with_backoff")
+def test_fetch_sbnation_articles_thumbnail_is_none_without_an_inline_image(mock_request):
+    mock_request.return_value = _response(SBNATION_ATOM_SAMPLE)
+    articles = fetch_sbnation_articles(147, days=7)
+    assert articles[0]["thumbnail"] is None
+
+
+@patch("macroservice.news.request_with_backoff")
+def test_fetch_sbnation_articles_extracts_thumbnail_from_inline_content_image(mock_request):
+    mock_request.return_value = _response(SBNATION_ATOM_WITH_IMAGE)
+    articles = fetch_sbnation_articles(147, days=7)
+    # The raw feed HTML-entity-escapes "&" as "&#038;" (WordPress's
+    # esc_url()) -- must come back as a real "&" since this is set directly
+    # as an <img src> DOM attribute, never HTML-entity-decoded by a browser.
+    assert articles[0]["thumbnail"] == "https://platform.pinstripealley.com/photo.jpg?quality=90&strip=all"
 
 
 def test_fetch_sbnation_articles_returns_empty_for_unknown_team():
