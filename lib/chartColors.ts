@@ -6,17 +6,17 @@
  * (brand color, not a primary data hue).
  */
 export const CHART_PALETTE = [
-  "#00f0ff", // --color-accent-blue (Statcast Teal)
-  "#00c896", // --color-accent-blue-base (Data Mint)
-  "#ff3b30", // --color-semantic-error (Velocity Red)
-  "#e8765e", // --color-accent-orange
-  "#9874d2", // --color-accent-purple
-  "#eca438", // --color-accent-yellow
-  "#888888", // --color-accent-gray
+  "#00a7b8", // --color-accent-blue (teal)
+  "#00816a", // --color-semantic-success (deepened mint)
+  "#d92c22", // --color-semantic-error (velocity red)
+  "#c15a3f", // --color-accent-orange (deepened for the white background)
+  "#7457a8", // --color-accent-purple (deepened)
+  "#b6791a", // --color-accent-yellow (deepened)
+  "#6b7280", // --color-accent-gray (deepened)
   "#bd3039", // --color-mlb-red
 ];
 
-export const CHART_MARKER_OUTLINE = "#05070c"; // --color-canvas-deep
+export const CHART_MARKER_OUTLINE = "#ffffff"; // --color-surface (white marker ring on the light chart background)
 
 export function withAlpha(hex: string, alpha = 0.15): string {
   const h = hex.replace("#", "");

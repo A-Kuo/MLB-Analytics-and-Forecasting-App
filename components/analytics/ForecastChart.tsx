@@ -78,7 +78,7 @@ export function ForecastChart({ forecastByMetric, acronymByMetric, title }: Fore
         xaxis: { title: { text: "Season" }, dtick: 1 },
         yaxis: { title: { text: hasRate ? "Rate" : "Total" } },
         ...(hasRate && hasCount ? { yaxis2: { title: { text: "Total" }, overlaying: "y", side: "right" } } : {}),
-        template: "plotly_dark",
+        template: "plotly_white",
         hovermode: "x unified",
         margin: { t: 56, b: 40, l: 48, r: 48 },
         paper_bgcolor: "transparent",

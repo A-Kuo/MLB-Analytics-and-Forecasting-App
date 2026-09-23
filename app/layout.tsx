@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "MLB Analytics Dashboard",
-  description: "Player and team analytics, forecasts, and season leaderboards.",
+  title: "MLB Analytics & Forecasting",
+  description: "Player and team analytics, predictive performance forecasting, and season leaderboards.",
   icons: {
     icon: "/favicon.png",
   },

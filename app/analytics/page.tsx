@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
                   type="button"
                   onClick={handleCalculateKpi}
                   disabled={selectedIds.size === 0 || kpiLoading}
-                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-canvas-deep transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base hover:text-ink-deep disabled:opacity-50"
+                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-white transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base disabled:opacity-50"
                 >
                   {kpiLoading ? "Calculating…" : "Calculate"}
                 </button>
@@ -255,7 +255,7 @@ export default function AnalyticsPage() {
                   type="button"
                   onClick={handleVisualizeTrend}
                   disabled={selectedIds.size === 0 || trendMetrics.size === 0 || trendLoading}
-                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-canvas-deep transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base hover:text-ink-deep disabled:opacity-50"
+                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-white transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base disabled:opacity-50"
                 >
                   {trendLoading ? "Loading…" : "Visualize"}
                 </button>
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
                   disabled={
                     selectedIds.size === 0 || forecastMetrics.size === 0 || forecastEnd <= endYear || forecastLoading
                   }
-                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-canvas-deep transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base hover:text-ink-deep disabled:opacity-50"
+                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-white transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base disabled:opacity-50"
                 >
                   {forecastLoading ? "Fitting forecast…" : "Forecast"}
                 </button>

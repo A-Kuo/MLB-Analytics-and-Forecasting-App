@@ -8,11 +8,14 @@
  * accent" role rather than switching to Retool's own blue -- Retool's
  * other hues (blue/green/orange/purple/...) are kept as the app's
  * secondary accent set (chart palette, future semantic states).
- * SUPERSEDED (color pass): neutrals now follow a "Statcast" navy-black
- * broadcast scheme -- Stadium Dark canvas, Field Grey surfaces, and an
- * electric-teal primary accent (#00f0ff) with Data Mint (#00c896) as its
- * hover/settled state and Velocity Red (#ff3b30) for the error semantic.
- * MLB red is brand-only (wordmark). Token
+ * SUPERSEDED (color pass): a dark navy "broadcast" scheme was tried and
+ * reverted -- too close to a racing/gaming HUD look. Neutrals now follow a
+ * sterile, Baseball-Savant-style LIGHT scheme instead: white canvas, a
+ * hairline-grey wash for structural surfaces, near-black text. The teal
+ * accent (#00a7b8, darker than the dark-theme attempt so it stays legible
+ * as text/borders on white -- not just as a button fill) and Velocity Red
+ * error semantic are kept from that pass. MLB red is brand-only (wordmark).
+ * Token
  * NAMES are unchanged from the app's own prior charcoal theme so nothing
  * referencing them needs renaming -- only values/additions changed.
  * "Saans"/"pxGrotesk" in the source extract are Retool's own proprietary
@@ -35,8 +38,8 @@
   --color-mlb-red-background: #4a1216;
   --color-mlb-red-muted: #ebadb2;
   --color-mlb-navy: #002d72;
-  --color-mlb-link: #e7eaf0;
-  --color-mlb-link-hover: #00c896;
+  --color-mlb-link: #3f4652;
+  --color-mlb-link-hover: #00a7b8;
 
   /* Secondary accent hues -- chart palette (lib/chartColors.ts mirrors
      these as literal hex, since Plotly doesn't resolve CSS vars) and
@@ -44,59 +47,59 @@
      extract had them (blue/green/orange/purple); focused-only for the
      rest (no full source data -- not invented). Namespaced --color-accent-*
      to avoid colliding with Tailwind v4's own built-in numbered scales. */
-  --color-accent-blue: #00f0ff;
-  --color-accent-blue-base: #00c896;
-  --color-accent-blue-background: #062a2e;
-  --color-accent-blue-muted: #7de9f2;
-  --color-accent-green: #4d9987;
-  --color-accent-green-base: #185849;
-  --color-accent-green-background: #0e352c;
-  --color-accent-green-muted: #afd1c6;
-  --color-accent-orange: #e8765e;
-  --color-accent-orange-base: #793325;
-  --color-accent-orange-background: #491f16;
-  --color-accent-orange-muted: #f5c2b2;
-  --color-accent-purple: #9874d2;
-  --color-accent-purple-base: #53397c;
-  --color-accent-purple-background: #3f2a68;
-  --color-accent-purple-muted: #d0c1ea;
-  --color-accent-pink: #ff0080;
-  --color-accent-pink-base: #c7006a;
-  --color-accent-pink-background: #4a0a2a;
-  --color-accent-pink-muted: #ff80bf;
-  --color-accent-yellow: #eca438;
-  --color-accent-gray: #888888;
+  --color-accent-blue: #00a7b8;
+  --color-accent-blue-base: #007986;
+  --color-accent-blue-background: #e0f5f7;
+  --color-accent-blue-muted: #7dd9e3;
+  --color-accent-green: #2f7d68;
+  --color-accent-green-base: #1e5c4b;
+  --color-accent-green-background: #e2f0ec;
+  --color-accent-green-muted: #8fc2af;
+  --color-accent-orange: #c15a3f;
+  --color-accent-orange-base: #954330;
+  --color-accent-orange-background: #f7e6e1;
+  --color-accent-orange-muted: #e0a591;
+  --color-accent-purple: #7457a8;
+  --color-accent-purple-base: #563f81;
+  --color-accent-purple-background: #ede7f5;
+  --color-accent-purple-muted: #b6a3d6;
+  --color-accent-pink: #b8296f;
+  --color-accent-pink-base: #8f1d54;
+  --color-accent-pink-background: #f7e5ee;
+  --color-accent-pink-muted: #dd8fb3;
+  --color-accent-yellow: #b6791a;
+  --color-accent-gray: #6b7280;
 
-  /* Neutrals -- Statcast "Stadium Dark" navy-black canvas, Field Grey
-     surfaces/borders. */
-  --color-canvas: #0a0e17;
-  --color-canvas-deep: #05070c;
-  --color-surface: #1e2530;
-  --color-surface-soft: #141a24;
-  --color-hairline: #1e2530;
-  --color-hairline-soft: #171d27;
-  --color-hairline-strong: #313a4a;
-  --color-ink-deep: #ffffff;
-  --color-ink: #e7eaf0;
-  --color-slate: #b7bec9;
-  --color-steel: #8a93a3;
-  --color-stone: #6e7686;
-  --color-muted: #545b68;
+  /* Neutrals -- sterile white canvas with a light hairline-grey wash for
+     structural surfaces (Baseball Savant's own chrome, not a dark theme). */
+  --color-canvas: #f4f5f7;
+  --color-canvas-deep: #e7e9ed;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f0f1f4;
+  --color-hairline: #e2e4e9;
+  --color-hairline-soft: #edeef1;
+  --color-hairline-strong: #c9ccd3;
+  --color-ink-deep: #0a0e17;
+  --color-ink: #1e2530;
+  --color-slate: #3f4652;
+  --color-steel: #5b6472;
+  --color-stone: #7b8494;
+  --color-muted: #a0a7b2;
 
-  /* Semantic -- error uses Velocity Red, success reuses Data Mint (the
-     "stable" tone of the primary teal accent -- see --color-accent-blue-*
-     above), matching the source doc's telemetry roles. */
-  --color-semantic-error: #ff3b30;
-  --color-semantic-error-base: #cc2f26;
-  --color-semantic-error-background: #3a1210;
-  --color-semantic-error-muted: #ff9a93;
-  --color-semantic-success: #00c896;
-  --color-semantic-success-base: #00996f;
-  --color-semantic-success-background: #0a2b23;
-  --color-semantic-success-muted: #6fe0c0;
-  --color-semantic-warning: #f1a42e;
-  --color-semantic-warning-base: #aa6800;
-  --color-semantic-warning-background: #4b371d;
+  /* Semantic -- error uses Velocity Red, success reuses a deepened Data
+     Mint (dark enough to read as text on white; the bright button-fill
+     tone lives on --color-accent-blue-muted). */
+  --color-semantic-error: #d92c22;
+  --color-semantic-error-base: #a8221a;
+  --color-semantic-error-background: #fdecea;
+  --color-semantic-error-muted: #f28b84;
+  --color-semantic-success: #00816a;
+  --color-semantic-success-base: #00614f;
+  --color-semantic-success-background: #e2f5f1;
+  --color-semantic-success-muted: #5fc4ae;
+  --color-semantic-warning: #b06a00;
+  --color-semantic-warning-base: #8a5200;
+  --color-semantic-warning-background: #fdf1e0;
   --color-semantic-warning-muted: #e0a24e;
 
   /* Motion -- a single custom ease plus a duration step scale, applied to
