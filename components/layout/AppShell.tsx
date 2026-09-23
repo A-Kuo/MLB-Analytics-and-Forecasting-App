@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TopNav } from "@/components/nav/TopNav";
+import { LiveScoreboard } from "@/components/scoreboard/LiveScoreboard";
 import { NewsTeamIdsProvider, useNewsTeamIds } from "@/lib/newsContext";
 import { NewsDrawer } from "./NewsDrawer";
 
@@ -23,6 +24,7 @@ function AppShellInner({ children }: AppShellProps) {
         }`}
       >
         <TopNav onToggleNews={() => setNewsOpen(!newsOpen)} />
+        <LiveScoreboard />
         <main className="flex-1">
           {children}
         </main>

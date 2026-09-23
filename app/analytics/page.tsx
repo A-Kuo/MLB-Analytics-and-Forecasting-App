@@ -8,6 +8,7 @@ import { KpiCards } from "@/components/analytics/KpiCards";
 import { PlayerSelector } from "@/components/analytics/PlayerSelector";
 import { TimelineControl } from "@/components/analytics/TimelineControl";
 import { TrendChart } from "@/components/analytics/TrendChart";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import {
   getAggregateForecast,
   getAggregateKpi,
@@ -132,7 +133,7 @@ export default function AnalyticsPage() {
   const acronymByMetric = Object.fromEntries(metrics);
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-xl px-6 py-xl">
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-xl px-6 py-xl">
       <div>
         <h1 className="text-heading-1 text-ink-deep">Analytics and Forecasts</h1>
         <p className="text-subtitle text-slate">
@@ -174,141 +175,154 @@ export default function AnalyticsPage() {
       </section>
 
       {teamId !== null && (
-        <>
-          <section>
-            <h2 className="mb-md text-heading-5 text-ink-deep">Timeline</h2>
-            <TimelineControl
-              minYear={EARLIEST_SEASON}
-              maxYear={currentSeason}
-              startYear={startYear}
-              endYear={endYear}
-              onChange={(s, e) => {
-                setStartYear(s);
-                setEndYear(e);
-                setSelectedIds(new Set());
-              }}
-            />
-          </section>
-
-          <section>
-            <h2 className="mb-md text-heading-5 text-ink-deep">Player</h2>
-            <PlayerSelector
-              roster={roster}
-              startYear={startYear}
-              endYear={endYear}
-              selectedIds={selectedIds}
-              onChange={setSelectedIds}
-            />
-            <p className="mt-xs text-micro text-stone">
-              {selectedIds.size} player{selectedIds.size === 1 ? "" : "s"} selected
-              {selectedIds.size > 0 ? ` -- showing ${selectedGroup} metrics` : ""}
-            </p>
-          </section>
-
-          <section>
-            <h2 className="mb-md text-heading-5 text-ink-deep">Aggregate KPI</h2>
-            <button
-              type="button"
-              onClick={handleCalculateKpi}
-              disabled={selectedIds.size === 0 || kpiLoading}
-              className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-white transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base disabled:opacity-50"
-            >
-              {kpiLoading ? "Calculating…" : "Calculate"}
-            </button>
-            {selectedIds.size === 0 ? (
-              <p className="text-body-sm text-stone">Select one or more players, then press Calculate.</p>
-            ) : (
-              <KpiCards metrics={metrics} values={kpiValues} />
-            )}
-          </section>
-
-          <section>
-            <h2 className="mb-md text-heading-5 text-ink-deep">Performance Trend</h2>
-            <div className="mb-md flex flex-wrap gap-sm">
-              {metrics.map(([key, acronym]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-1 text-body-sm text-ink">
-                  <input
-                    type="checkbox"
-                    checked={trendMetrics.has(key)}
-                    onChange={(e) => {
-                      const next = new Set(trendMetrics);
-                      if (e.target.checked) next.add(key);
-                      else next.delete(key);
-                      setTrendMetrics(next);
-                    }}
-                    className="accent-accent-blue"
-                  />
-                  {acronym}
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={handleVisualizeTrend}
-              disabled={selectedIds.size === 0 || trendMetrics.size === 0 || trendLoading}
-              className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-white transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base disabled:opacity-50"
-            >
-              {trendLoading ? "Loading…" : "Visualize"}
-            </button>
-            {trendData && Object.keys(trendData).length > 0 && (
-              <TrendChart
-                seriesByMetric={trendData}
-                acronymByMetric={acronymByMetric}
-                title={`${teams?.find((t) => t.id === teamId)?.name ?? ""} — ${startYear} to ${endYear}`}
+        // Sidebar (Timeline/Player controls) beside the results column
+        // instead of one long vertical stack -- uses the extra horizontal
+        // room on wide screens to cut down on downward scrolling.
+        <div className="grid gap-xl lg:grid-cols-[340px_1fr] lg:items-start">
+          <aside className="flex flex-col gap-xl lg:sticky lg:top-24">
+            <section>
+              <h2 className="mb-md text-heading-5 text-ink-deep">Timeline</h2>
+              <TimelineControl
+                minYear={EARLIEST_SEASON}
+                maxYear={currentSeason}
+                startYear={startYear}
+                endYear={endYear}
+                onChange={(s, e) => {
+                  setStartYear(s);
+                  setEndYear(e);
+                  setSelectedIds(new Set());
+                }}
               />
-            )}
-          </section>
+            </section>
 
-          <section>
-            <h2 className="mb-md text-heading-5 text-ink-deep">Forecast</h2>
-            <div className="mb-md flex items-center gap-sm">
-              <label className="flex items-center gap-xs text-body-sm text-steel">
-                Forecast horizon (year)
-                <input
-                  type="number"
-                  min={endYear + 1}
-                  max={currentSeason + FORECAST_HORIZON_YEARS}
-                  value={forecastEnd}
-                  onChange={(e) => setForecastEnd(parseInt(e.target.value, 10))}
-                  className="w-24 rounded-md border border-hairline-strong bg-surface px-2 py-1 text-body-sm text-ink"
+            <section>
+              <CollapsibleSection
+                title="Player"
+                summary={`${selectedIds.size} selected${selectedIds.size > 0 ? ` -- ${selectedGroup} metrics` : ""}`}
+                defaultOpen={false}
+              >
+                <PlayerSelector
+                  roster={roster}
+                  startYear={startYear}
+                  endYear={endYear}
+                  selectedIds={selectedIds}
+                  onChange={setSelectedIds}
                 />
-              </label>
-            </div>
-            <div className="mb-md flex flex-wrap gap-sm">
-              {metrics.map(([key, acronym]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-1 text-body-sm text-ink">
-                  <input
-                    type="checkbox"
-                    checked={forecastMetrics.has(key)}
-                    onChange={(e) => {
-                      const next = new Set(forecastMetrics);
-                      if (e.target.checked) next.add(key);
-                      else next.delete(key);
-                      setForecastMetrics(next);
-                    }}
-                    className="accent-accent-blue"
+              </CollapsibleSection>
+            </section>
+          </aside>
+
+          <div className="flex flex-col gap-xl">
+            <section>
+              <CollapsibleSection title="Aggregate KPI">
+                <button
+                  type="button"
+                  onClick={handleCalculateKpi}
+                  disabled={selectedIds.size === 0 || kpiLoading}
+                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-canvas-deep transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base hover:text-ink-deep disabled:opacity-50"
+                >
+                  {kpiLoading ? "Calculating…" : "Calculate"}
+                </button>
+                {selectedIds.size === 0 ? (
+                  <p className="text-body-sm text-stone">Select one or more players, then press Calculate.</p>
+                ) : (
+                  <KpiCards metrics={metrics} values={kpiValues} />
+                )}
+              </CollapsibleSection>
+            </section>
+
+            <section>
+              <CollapsibleSection title="Performance Trend">
+                <div className="mb-md flex flex-wrap gap-sm">
+                  {metrics.map(([key, acronym]) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-1 text-body-sm text-ink">
+                      <input
+                        type="checkbox"
+                        checked={trendMetrics.has(key)}
+                        onChange={(e) => {
+                          const next = new Set(trendMetrics);
+                          if (e.target.checked) next.add(key);
+                          else next.delete(key);
+                          setTrendMetrics(next);
+                        }}
+                        className="accent-accent-blue"
+                      />
+                      {acronym}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleVisualizeTrend}
+                  disabled={selectedIds.size === 0 || trendMetrics.size === 0 || trendLoading}
+                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-canvas-deep transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base hover:text-ink-deep disabled:opacity-50"
+                >
+                  {trendLoading ? "Loading…" : "Visualize"}
+                </button>
+                {trendData && Object.keys(trendData).length > 0 && (
+                  <TrendChart
+                    seriesByMetric={trendData}
+                    acronymByMetric={acronymByMetric}
+                    title={`${teams?.find((t) => t.id === teamId)?.name ?? ""} — ${startYear} to ${endYear}`}
                   />
-                  {acronym}
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={handleForecast}
-              disabled={selectedIds.size === 0 || forecastMetrics.size === 0 || forecastEnd <= endYear || forecastLoading}
-              className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-white transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base disabled:opacity-50"
-            >
-              {forecastLoading ? "Fitting forecast…" : "Forecast"}
-            </button>
-            {forecastData && Object.keys(forecastData).length > 0 && (
-              <ForecastChart
-                forecastByMetric={forecastData}
-                acronymByMetric={acronymByMetric}
-                title={`${teams?.find((t) => t.id === teamId)?.name ?? ""} — forecast ${endYear} to ${forecastEnd}`}
-              />
-            )}
-          </section>
-        </>
+                )}
+              </CollapsibleSection>
+            </section>
+
+            <section>
+              <CollapsibleSection title="Forecast">
+                <div className="mb-md flex items-center gap-sm">
+                  <label className="flex items-center gap-xs text-body-sm text-steel">
+                    Forecast horizon (year)
+                    <input
+                      type="number"
+                      min={endYear + 1}
+                      max={currentSeason + FORECAST_HORIZON_YEARS}
+                      value={forecastEnd}
+                      onChange={(e) => setForecastEnd(parseInt(e.target.value, 10))}
+                      className="w-24 rounded-md border border-hairline-strong bg-surface px-2 py-1 text-body-sm text-ink"
+                    />
+                  </label>
+                </div>
+                <div className="mb-md flex flex-wrap gap-sm">
+                  {metrics.map(([key, acronym]) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-1 text-body-sm text-ink">
+                      <input
+                        type="checkbox"
+                        checked={forecastMetrics.has(key)}
+                        onChange={(e) => {
+                          const next = new Set(forecastMetrics);
+                          if (e.target.checked) next.add(key);
+                          else next.delete(key);
+                          setForecastMetrics(next);
+                        }}
+                        className="accent-accent-blue"
+                      />
+                      {acronym}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleForecast}
+                  disabled={
+                    selectedIds.size === 0 || forecastMetrics.size === 0 || forecastEnd <= endYear || forecastLoading
+                  }
+                  className="mb-md rounded-full bg-accent-blue px-4 py-2 text-body-sm-medium text-canvas-deep transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-accent-blue-base hover:text-ink-deep disabled:opacity-50"
+                >
+                  {forecastLoading ? "Fitting forecast…" : "Forecast"}
+                </button>
+                {forecastData && Object.keys(forecastData).length > 0 && (
+                  <ForecastChart
+                    forecastByMetric={forecastData}
+                    acronymByMetric={acronymByMetric}
+                    title={`${teams?.find((t) => t.id === teamId)?.name ?? ""} — forecast ${endYear} to ${forecastEnd}`}
+                  />
+                )}
+              </CollapsibleSection>
+            </section>
+          </div>
+        </div>
       )}
     </div>
   );

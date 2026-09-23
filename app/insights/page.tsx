@@ -36,7 +36,7 @@ export default function InsightsPage() {
   }, [selectedTeamIds, setTeamIds]);
 
   return (
-    <div className="mx-auto flex max-w-[1280px] flex-col gap-xl px-6 py-xl">
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-xl px-6 py-xl">
       <div>
         <h1 className="text-heading-1 text-ink-deep">Insights</h1>
         <p className="text-subtitle text-slate">Season leaderboards by metric, across the teams you select.</p>
@@ -58,12 +58,16 @@ export default function InsightsPage() {
             <SeasonSelector selectedSeason={season} onChange={setSeason} minYear={EARLIEST_SEASON} />
           </section>
 
+          {/* Each group's metrics fill a multi-column grid instead of a
+              single vertical stack -- expanders are collapsed by default,
+              so this uses the page's horizontal room to fit far more of
+              them above the fold. */}
           <section className="flex flex-col gap-lg">
             <h2 className="text-heading-5 text-ink-deep">Leaderboards</h2>
 
             <div>
               <h3 className="mb-sm text-heading-4 text-ink">Hitting</h3>
-              <div className="flex flex-col gap-xs">
+              <div className="grid grid-cols-1 gap-sm md:grid-cols-2 xl:grid-cols-3">
                 {HITTING_METRICS.map(([key, acronym]) => (
                   <LeaderboardExpander
                     key={key}
@@ -80,7 +84,7 @@ export default function InsightsPage() {
 
             <div>
               <h3 className="mb-sm text-heading-4 text-ink">Pitching</h3>
-              <div className="flex flex-col gap-xs">
+              <div className="grid grid-cols-1 gap-sm md:grid-cols-2 xl:grid-cols-3">
                 {PITCHING_METRICS.map(([key, acronym]) => (
                   <LeaderboardExpander
                     key={key}

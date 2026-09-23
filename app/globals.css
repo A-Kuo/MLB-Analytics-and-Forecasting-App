@@ -8,9 +8,11 @@
  * accent" role rather than switching to Retool's own blue -- Retool's
  * other hues (blue/green/orange/purple/...) are kept as the app's
  * secondary accent set (chart palette, future semantic states).
- * SUPERSEDED (color pass): neutrals now follow a Geist-style near-black
- * scheme and the interactive accent is Vercel blue (#0070f3, with pink
- * #ff0080 as the second accent). MLB red is now brand-only (wordmark). Token
+ * SUPERSEDED (color pass): neutrals now follow a "Statcast" navy-black
+ * broadcast scheme -- Stadium Dark canvas, Field Grey surfaces, and an
+ * electric-teal primary accent (#00f0ff) with Data Mint (#00c896) as its
+ * hover/settled state and Velocity Red (#ff3b30) for the error semantic.
+ * MLB red is brand-only (wordmark). Token
  * NAMES are unchanged from the app's own prior charcoal theme so nothing
  * referencing them needs renaming -- only values/additions changed.
  * "Saans"/"pxGrotesk" in the source extract are Retool's own proprietary
@@ -33,8 +35,8 @@
   --color-mlb-red-background: #4a1216;
   --color-mlb-red-muted: #ebadb2;
   --color-mlb-navy: #002d72;
-  --color-mlb-link: #ededed;
-  --color-mlb-link-hover: #3291ff;
+  --color-mlb-link: #e7eaf0;
+  --color-mlb-link-hover: #00c896;
 
   /* Secondary accent hues -- chart palette (lib/chartColors.ts mirrors
      these as literal hex, since Plotly doesn't resolve CSS vars) and
@@ -42,10 +44,10 @@
      extract had them (blue/green/orange/purple); focused-only for the
      rest (no full source data -- not invented). Namespaced --color-accent-*
      to avoid colliding with Tailwind v4's own built-in numbered scales. */
-  --color-accent-blue: #0070f3;
-  --color-accent-blue-base: #0059c9;
-  --color-accent-blue-background: #0b1f3a;
-  --color-accent-blue-muted: #79b8ff;
+  --color-accent-blue: #00f0ff;
+  --color-accent-blue-base: #00c896;
+  --color-accent-blue-background: #062a2e;
+  --color-accent-blue-muted: #7de9f2;
   --color-accent-green: #4d9987;
   --color-accent-green-base: #185849;
   --color-accent-green-background: #0e352c;
@@ -65,31 +67,33 @@
   --color-accent-yellow: #eca438;
   --color-accent-gray: #888888;
 
-  /* Neutrals -- Geist-style near-black canvas, hairline borders. */
-  --color-canvas: #0a0a0a;
-  --color-canvas-deep: #000000;
-  --color-surface: #111111;
-  --color-surface-soft: #1a1a1a;
-  --color-hairline: #333333;
-  --color-hairline-soft: #262626;
-  --color-hairline-strong: #444444;
+  /* Neutrals -- Statcast "Stadium Dark" navy-black canvas, Field Grey
+     surfaces/borders. */
+  --color-canvas: #0a0e17;
+  --color-canvas-deep: #05070c;
+  --color-surface: #1e2530;
+  --color-surface-soft: #141a24;
+  --color-hairline: #1e2530;
+  --color-hairline-soft: #171d27;
+  --color-hairline-strong: #313a4a;
   --color-ink-deep: #ffffff;
-  --color-ink: #ededed;
-  --color-slate: #a1a1a1;
-  --color-steel: #888888;
-  --color-stone: #7d7d7d;
-  --color-muted: #666666;
+  --color-ink: #e7eaf0;
+  --color-slate: #b7bec9;
+  --color-steel: #8a93a3;
+  --color-stone: #6e7686;
+  --color-muted: #545b68;
 
-  /* Semantic -- 4-weight each (focused/base/background/muted), matching
-     the source extract's mid/dark/darkest/light steps. */
-  --color-semantic-error: #f15264;
-  --color-semantic-error-base: #c72844;
-  --color-semantic-error-background: #651722;
-  --color-semantic-error-muted: #e79295;
-  --color-semantic-success: #11997a;
-  --color-semantic-success-base: #008163;
-  --color-semantic-success-background: #1a3c32;
-  --color-semantic-success-muted: #52bb9d;
+  /* Semantic -- error uses Velocity Red, success reuses Data Mint (the
+     "stable" tone of the primary teal accent -- see --color-accent-blue-*
+     above), matching the source doc's telemetry roles. */
+  --color-semantic-error: #ff3b30;
+  --color-semantic-error-base: #cc2f26;
+  --color-semantic-error-background: #3a1210;
+  --color-semantic-error-muted: #ff9a93;
+  --color-semantic-success: #00c896;
+  --color-semantic-success-base: #00996f;
+  --color-semantic-success-background: #0a2b23;
+  --color-semantic-success-muted: #6fe0c0;
   --color-semantic-warning: #f1a42e;
   --color-semantic-warning-base: #aa6800;
   --color-semantic-warning-background: #4b371d;
@@ -114,7 +118,7 @@
     rgb(180, 152, 215) 77.04%,
     rgb(176, 204, 234) 100%
   );
-  --gradient-accent-bar: linear-gradient(90deg, var(--color-accent-blue) 0%, var(--color-accent-pink) 100%);
+  --gradient-accent-bar: linear-gradient(90deg, var(--color-accent-blue) 0%, var(--color-accent-blue-base) 100%);
 
   /* rounded.* */
   --radius-xs: 4px;
@@ -256,6 +260,16 @@
 }
 @utility bg-gradient-accent-bar {
   background-image: var(--gradient-accent-bar);
+}
+
+/* Hides the scrollbar on the horizontally-scrolling LiveScoreboard strip
+   (arrow buttons drive scrolling instead) while keeping the element
+   scrollable via wheel/touch/programmatic scrollBy. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 body {

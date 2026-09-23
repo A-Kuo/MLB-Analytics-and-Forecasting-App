@@ -147,6 +147,25 @@ export async function getTeamRoster(teamId: number): Promise<RosterEntry[]> {
   return data;
 }
 
+export interface ScheduleGame {
+  gamePk: number;
+  status: "preview" | "live" | "final";
+  gameDate: string;
+  awayTeamId: number;
+  homeTeamId: number;
+  awayScore: number;
+  homeScore: number;
+  inningNumber: number | null;
+  inningHalf: "top" | "bottom" | null;
+  outs: number;
+  runners: { first: boolean; second: boolean; third: boolean };
+}
+
+export async function getSchedule(date?: string): Promise<ScheduleGame[]> {
+  const { data } = await apiFetch<{ data: ScheduleGame[] }>(date ? `/schedule?date=${date}` : "/schedule");
+  return data;
+}
+
 export async function getAggregateKpi(
   playerIds: readonly number[],
   metric: string,
