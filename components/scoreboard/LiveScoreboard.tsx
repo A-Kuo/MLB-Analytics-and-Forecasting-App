@@ -98,6 +98,7 @@ function GameCell({ game, teamById }: { game: ScheduleGame; teamById: Map<number
 export function LiveScoreboard() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [games, setGames] = useState<ScheduleGame[] | null>(null);
+  const [gamesDate, setGamesDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -113,7 +114,11 @@ export function LiveScoreboard() {
     let cancelled = false;
     function load() {
       getSchedule()
-        .then((data) => !cancelled && setGames(data))
+        .then(({ games: g, date }) => {
+          if (cancelled) return;
+          setGames(g);
+          setGamesDate(date);
+        })
         .catch((err: Error) => !cancelled && setError(err.message));
     }
     load();
@@ -125,7 +130,11 @@ export function LiveScoreboard() {
   }, []);
 
   const teamById = new Map(teams.map((t) => [t.id, t]));
-  const dateLabel = new Date().toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
+  // gamesDate is "YYYY-MM-DD" in MLB's (Eastern) schedule day; parse as a plain
+  // calendar date so the viewer's timezone can't shift it by a day.
+  const dateLabel = gamesDate
+    ? `${Number(gamesDate.slice(5, 7))}/${Number(gamesDate.slice(8, 10))}`
+    : "";
 
   if (error || (games && games.length === 0)) return null;
 

@@ -161,9 +161,11 @@ export interface ScheduleGame {
   runners: { first: boolean; second: boolean; third: boolean };
 }
 
-export async function getSchedule(date?: string): Promise<ScheduleGame[]> {
-  const { data } = await apiFetch<{ data: ScheduleGame[] }>(date ? `/schedule?date=${date}` : "/schedule");
-  return data;
+export async function getSchedule(date?: string): Promise<{ games: ScheduleGame[]; date: string }> {
+  const { data, date: resolvedDate } = await apiFetch<{ data: ScheduleGame[]; date: string }>(
+    date ? `/schedule?date=${date}` : "/schedule",
+  );
+  return { games: data, date: resolvedDate };
 }
 
 export async function getAggregateKpi(

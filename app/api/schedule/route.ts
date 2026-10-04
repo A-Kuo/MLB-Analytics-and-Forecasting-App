@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 // the Neon data mart. Hit the public MLB Stats API directly, the same
 // endpoint/hydrate combination as macroservice/teams.py's get_schedule.
 const STATS_API_BASE = "https://statsapi.mlb.com/api/v1";
+const LOOKAHEAD_DAYS = 7;
 
 export type ScheduleGame = {
   gamePk: number;
@@ -28,18 +29,29 @@ function mapStatus(abstractGameState: string): ScheduleGame["status"] {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date") ?? new Date().toISOString().slice(0, 10);
+  // MLB's schedule day is Eastern time; UTC would roll to "tomorrow" every evening.
+  const startDate =
+    searchParams.get("date") ?? new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
   try {
-    const res = await fetch(
-      `${STATS_API_BASE}/schedule?sportId=1&gameType=R&hydrate=linescore,team&date=${date}`,
-      { next: { revalidate: 30 } },
-    );
-    if (!res.ok) throw new Error(`MLB Stats API responded ${res.status}`);
-    const payload = await res.json();
-
+    // No gameType filter: postseason games count. When the requested day has
+    // none (off day, offseason), look ahead for the next day that does so the
+    // strip shows upcoming games instead of disappearing.
+    let date = startDate;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawGames: any[] = (payload.dates ?? []).flatMap((d: any) => d.games ?? []);
+    let rawGames: any[] = [];
+    for (let offset = 0; offset <= LOOKAHEAD_DAYS && rawGames.length === 0; offset++) {
+      const d = new Date(`${startDate}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + offset);
+      date = d.toISOString().slice(0, 10);
+      const res = await fetch(`${STATS_API_BASE}/schedule?sportId=1&hydrate=linescore,team&date=${date}`, {
+        next: { revalidate: 30 },
+      });
+      if (!res.ok) throw new Error(`MLB Stats API responded ${res.status}`);
+      const payload = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rawGames = (payload.dates ?? []).flatMap((day: any) => day.games ?? []);
+    }
 
     const games: ScheduleGame[] = rawGames.map((g) => {
       const linescore = g.linescore ?? {};
