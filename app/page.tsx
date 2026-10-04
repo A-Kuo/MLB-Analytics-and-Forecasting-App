@@ -101,10 +101,11 @@ export default function HomePage() {
           ))}
         </div>
         <p className="text-body-md text-ink">
-          The Gaussian Process model is what makes the forecast band on the Analytics page real rather than
-          decorative: its predictive standard deviation (σ) produces an approximate 90% interval (μ ± 1.645σ)
-          around the trajectory, and performance across all six candidates is reported as R², RMSE, and MAE
-          together rather than any single metric.
+          The Gaussian Process model supplies the forecast band on the Analytics page: its predictive standard
+          deviation (σ) gives a nominal 90% interval (μ ± 1.645σ) around the trajectory. In walk-forward
+          backtesting that band covered about 78-82% of outcomes, so treat it as roughly an 80% interval; the
+          ensemble beat a last-value baseline on MAE but not a career-average baseline at three seasons out.
+          Full R², RMSE, and MAE tables for all candidates are in the repository README.
         </p>
       </section>
 

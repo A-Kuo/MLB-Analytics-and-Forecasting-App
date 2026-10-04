@@ -40,7 +40,7 @@ Most personal sports-analytics projects fall into one of two traps: a toy dashbo
 
 ### Problems solved
 
-**The upstream data bottleneck.** The public MLB Stats API and Baseball Savant (Statcast) endpoints aren't built for direct, user-facing analytical queries — a single leaderboard spanning 30 teams and 20+ metrics would otherwise require thousands of nested REST calls, with 30+ second latency and frequent rate-limiting or timeouts. This project instead runs a two-tier, self-healing data mart on Neon PostgreSQL: upstream data is ingested asynchronously on a schedule (news every 6 hours, rosters monthly, season/leaderboard data on demand), stored with idempotent upserts, and queried locally at sub-second latency. On a cache miss, a controlled fallback retrieves live data and writes it back to Postgres to warm the cache.
+**The upstream data bottleneck.** The public MLB Stats API and Baseball Savant (Statcast) endpoints aren't built for direct, user-facing analytical queries — a single leaderboard spanning 30 teams and 20+ metrics would otherwise require hundreds to thousands of sequential REST calls (the per-call cost is small, so total latency scales with call count and rate-limit exposure; see [Measured results](#measured-results)). This project instead runs a two-tier, self-healing data mart on Neon PostgreSQL: upstream data is ingested asynchronously on a schedule (news every 6 hours, rosters monthly, season/leaderboard data on demand), stored with idempotent upserts, and queried with sub-200 ms p95 latency in local measurement (see [Measured results](#measured-results)). On a cache miss, a controlled fallback retrieves live data and writes it back to Postgres to warm the cache.
 
 **Naive temporal validation.** Random train/test splits (standard K-fold cross-validation) leak future performance into historical predictions for time-ordered player data, and a single fixed regression blend assumes one model shape fits every player's distribution. This project instead uses a leakage-free walk-forward validation harness (`TimeSeriesSplit`) across a multi-model zoo — Ridge, SVR, Huber, Gaussian Process Regression, Random Forest, and HistGradientBoosting — with hyperparameters tuned strictly on historical folds so temporal integrity is preserved.
 
@@ -418,7 +418,7 @@ $$
 \mu_t \pm 1.645\sigma_t
 $$
 
-This produces an approximate 90% model-based predictive interval under the model assumptions.
+This is a nominal 90% model-based interval under the model assumptions; in walk-forward backtesting its empirical coverage was about 78-82% (see [Forecast accuracy](#forecast-accuracy)).
 
 ### Chronological train/validation split
 
@@ -482,6 +482,75 @@ For smoothed rolling targets, validation values can have low variance. In those 
 
 ---
 
+## Measured results
+
+### Serving latency
+
+Warm requests (after one discarded warm-up), n = 20 each, from a local Next.js dev server on a home connection to Neon. Reproduce with `node scripts/benchmark_latency.mjs` while `npm run dev` is running. Deployed (Vercel region to Neon region) numbers will differ; these are a lower-confidence local measurement, not a production SLA.
+
+| Request | Median | p95 | Max |
+|---|---|---|---|
+| Leaderboard, 30 teams, home runs, 2025 (`/api/insights`) | 99 ms | 185 ms | 241 ms |
+| Leaderboard, 30 teams, ERA, 2025 (`/api/insights`) | 90 ms | 194 ms | 312 ms |
+| Team news, 10 teams, 7 days (`/api/news`) | 74 ms | 136 ms | 221 ms |
+| Baseline: one live MLB Stats API roster call | 50 ms | 73 ms | 199 ms |
+
+A single live API call is not slow. The cache's advantage is that one query replaces the hundreds of calls a multi-team, multi-metric leaderboard would need (about 30 roster calls plus per-player stat calls); that live-fan-out total was not benchmarked end to end.
+
+### Forecast accuracy
+
+Walk-forward evaluation of the season-level forecast the Analytics page serves (a player's future OPS predicted from year alone), run by `scripts/evaluate_forecasts.py`. Each model is fit only on seasons before the origin and scored on the next 1 or 3 seasons; the first origin has 6 training seasons, then the window expands. Sample: 300 players drawn at random (seed 42) from the 2,100 hitters with at least 10 seasons of OPS in the database. Reproduce with `python scripts/evaluate_forecasts.py --players 300`; raw output is `notebooks/results/forecast_eval-ops-2026-10-04.json`.
+
+**1 season ahead (2,228 predictions)**
+
+| Model | MAE | RMSE | R² (pooled) | MSE skill vs naive-last |
+|---|---|---|---|---|
+| Naive: last value | 0.1013 | 0.1510 | 0.118 | 0 |
+| Naive: expanding mean | 0.0999 | 0.1444 | 0.193 | +0.085 |
+| Ridge | 0.1195 | 0.1673 | -0.082 | -0.227 |
+| Huber | 0.1148 | 0.1619 | -0.013 | -0.149 |
+| SVR (RBF) | 0.0921 | 0.1362 | 0.283 | +0.187 |
+| Gaussian Process | 0.0960 | 0.1402 | 0.240 | +0.139 |
+| Random Forest | 0.0936 | 0.1393 | 0.249 | +0.149 |
+| HistGradientBoosting | 0.0945 | 0.1401 | 0.241 | +0.139 |
+| **Production ensemble** | 0.0916 | 0.1368 | 0.277 | +0.180 |
+
+**3 seasons ahead (1,628 predictions)**
+
+| Model | MAE | RMSE | R² (pooled) | MSE skill vs naive-last |
+|---|---|---|---|---|
+| Naive: last value | 0.1173 | 0.1729 | -0.045 | 0 |
+| Naive: expanding mean | 0.1090 | 0.1575 | 0.133 | +0.170 |
+| Ridge | 0.1772 | 0.2353 | -0.934 | -0.852 |
+| Huber | 0.1692 | 0.2278 | -0.812 | -0.735 |
+| SVR (RBF) | 0.1056 | 0.1551 | 0.160 | +0.196 |
+| Gaussian Process | 0.1082 | 0.1569 | 0.140 | +0.176 |
+| Random Forest | 0.1096 | 0.1624 | 0.079 | +0.118 |
+| HistGradientBoosting | 0.1098 | 0.1623 | 0.079 | +0.118 |
+| **Production ensemble** | 0.1093 | 0.1614 | 0.090 | +0.129 |
+
+What the results support and what they do not:
+
+- The production ensemble beats the last-value baseline: its MAE is lower by 0.0108 at 1 season (95% player-clustered bootstrap CI -0.0138 to -0.0081) and by 0.0075 at 3 seasons (CI -0.0110 to -0.0037).
+- At 3 seasons the ensemble is statistically indistinguishable from simply predicting the player's career-to-date mean (MAE 0.1093 vs 0.1090). The gain over naive comes mostly from shrinking toward a player's average, not from modeling a trajectory.
+- Ridge and Huber, which extrapolate a linear trend in year, are worse than the naive baselines at both horizons and badly so at 3 seasons. The ensemble does not beat its own best member: SVR alone is slightly better at both horizons.
+- The ensemble's nominal 90% interval is miscalibrated. Empirical coverage was 81.6% at 1 season and 78.4% at 3 seasons, so the band is too narrow; read it as roughly an 80% interval. (Tightening it from 95% to 90% earlier reduced coverage further.)
+- Pooled R² is computed against the pooled mean across players, so it mixes between-player and within-player variance; the MSE skill column against the last-value baseline is the more informative comparison.
+- Limits: year is the only predictor; the stats tables have no plate-appearance counts, so part-time seasons add noise that cannot be filtered out; one metric (OPS) and a 300-player sample were evaluated; the per-position tuned model selection described in the notebooks is not what the app serves, which uses the fixed 0.35/0.35/0.30 SVR/Huber/GPR blend.
+
+Earlier per-player notebook output (`notebooks/mlb-aggregate-models-v2.ipynb`, four players, one per position group; Ridge was the tuned pick for each) is retained for reference only and is too small to support conclusions:
+
+| Group | Player | Tuned pick | CV R² | Holdout R² | Holdout RMSE |
+|---|---|---|---|---|---|
+| Battery | Austin Wells | Ridge | -0.051 | 0.351 | 0.0148 |
+| Infield | Jazz Chisholm | Ridge | 0.701 | 0.718 | 0.0132 |
+| Outfield | Cody Bellinger | Ridge | 0.363 | 0.310 | 0.0088 |
+| Non-Fielders | Giancarlo Stanton | Ridge | 0.213 | 0.746 | 0.0079 |
+
+The team-level neural-network runs in `notebooks/results/` are local smoke tests (5 teams, 30 epochs) that validate the pipeline, not model quality; their holdout R² is negative on most targets and should not be read as results.
+
+---
+
 ## Limitations
 Public MLB and Baseball Savant endpoints may be rate-limited, incomplete, or temporarily unavailable; the project uses retry/backoff and controlled fallback behavior where applicable.
 
@@ -499,7 +568,7 @@ The Streamlit application is the primary user interface. The Next.js application
 
 ## Project Summary
 
-This platform was built to address the architectural and statistical limitations common to sports-data side projects: public sports APIs are slow, rate-limited, and lack unified sabermetric querying, while sports ML tutorials often suffer from look-ahead leakage. It combines an idempotent PostgreSQL data mart on Neon, automated ingestion pipelines with circuit-breaker resilience, and a walk-forward-validated regression zoo evaluated with chronological cross-validation — turning raw, noisy event telemetry into an interactive, sub-second analytics and forecasting platform, rather than either a live-fetching toy dashboard or a notebook detached from a real pipeline.
+This platform was built to address the architectural and statistical limitations common to sports-data side projects: public sports APIs are slow, rate-limited, and lack unified sabermetric querying, while sports ML tutorials often suffer from look-ahead leakage. It combines an idempotent PostgreSQL data mart on Neon, automated ingestion pipelines with circuit-breaker resilience, and a walk-forward-validated regression zoo evaluated with chronological cross-validation — turning raw, noisy event telemetry into an interactive analytics and forecasting platform, rather than either a live-fetching toy dashboard or a notebook detached from a real pipeline.
 
 ---
 
