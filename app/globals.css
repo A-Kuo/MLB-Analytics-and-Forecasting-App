@@ -194,64 +194,64 @@
   letter-spacing: -0.25px;
 }
 @utility text-heading-4 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 500;
   line-height: 1.30;
 }
 @utility text-heading-5 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
   line-height: 1.40;
 }
 @utility text-subtitle {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 400;
   line-height: 1.50;
 }
 @utility text-body-md {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 400;
   line-height: 1.55;
 }
 @utility text-body-md-medium {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
   line-height: 1.55;
 }
 @utility text-body-sm {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.50;
 }
 @utility text-body-sm-medium {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.50;
 }
 @utility text-caption {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 400;
   line-height: 1.40;
 }
 @utility text-caption-bold {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.40;
 }
 @utility text-micro {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.40;
 }
 @utility text-micro-uppercase {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.40;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 @utility text-button-md {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.30;
 }

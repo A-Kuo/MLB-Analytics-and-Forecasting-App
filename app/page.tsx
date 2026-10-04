@@ -31,7 +31,7 @@ const MODELS: { name: string; role: string }[] = [
 
 export default function HomePage() {
   return (
-    <div className="mx-auto flex max-w-[900px] flex-col gap-section px-6 py-xl">
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-section px-6 py-xl">
       <section className="flex flex-col gap-md py-lg text-center">
         <h1 className="text-heading-1 text-ink-deep">MLB Analytics &amp; Forecasting Platform</h1>
         <p className="text-subtitle text-slate">

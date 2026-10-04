@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
   const acronymByMetric = Object.fromEntries(metrics);
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-xl px-6 py-xl">
+    <div className="mx-auto flex max-w-[2400px] flex-col gap-xl px-6 lg:px-12 py-xl">
       <div>
         <h1 className="text-heading-1 text-ink-deep">Analytics and Forecasts</h1>
         <p className="text-subtitle text-slate">

@@ -24,7 +24,7 @@ export function TopNav({ onToggleNews }: TopNavProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-surface">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col px-6">
+      <div className="mx-auto flex w-full max-w-[2400px] flex-col px-6 lg:px-12">
         {/* Logo row -- above the tab selection below, not beside it */}
         <div className="flex h-16 items-center">
           <Link href="/" className="flex items-center gap-2 text-xl font-bold text-ink-deep">
@@ -54,8 +54,8 @@ export function TopNav({ onToggleNews }: TopNavProps) {
                   href={link.href}
                   className={
                     active
-                      ? "border-b-2 border-accent-blue py-4 text-sm font-medium text-ink-deep"
-                      : "py-4 text-sm font-medium text-steel transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:text-ink-deep"
+                      ? "border-b-2 border-accent-blue py-4 text-base font-medium text-ink-deep"
+                      : "py-4 text-base font-medium text-steel transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:text-ink-deep"
                   }
                 >
                   {link.label}
@@ -66,7 +66,7 @@ export function TopNav({ onToggleNews }: TopNavProps) {
           <button
             type="button"
             onClick={onToggleNews}
-            className="rounded-full border border-hairline-strong px-4 py-2 text-sm font-medium text-ink transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:bg-surface-soft"
+            className="rounded-full border border-hairline-strong px-4 py-2 text-base font-medium text-ink transition-colors duration-(--duration-sm) ease-(--ease-primary) hover:bg-surface-soft"
           >
             News Feed
           </button>

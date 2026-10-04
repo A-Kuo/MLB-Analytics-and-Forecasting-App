@@ -36,7 +36,7 @@ export default function InsightsPage() {
   }, [selectedTeamIds, setTeamIds]);
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-xl px-6 py-xl">
+    <div className="mx-auto flex max-w-[2400px] flex-col gap-xl px-6 lg:px-12 py-xl">
       <div>
         <h1 className="text-heading-1 text-ink-deep">Insights</h1>
         <p className="text-subtitle text-slate">Season leaderboards by metric, across the teams you select.</p>
@@ -67,7 +67,7 @@ export default function InsightsPage() {
 
             <div>
               <h3 className="mb-sm text-heading-4 text-ink">Hitting</h3>
-              <div className="grid grid-cols-1 gap-sm md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-sm md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {HITTING_METRICS.map(([key, acronym]) => (
                   <LeaderboardExpander
                     key={key}
@@ -84,7 +84,7 @@ export default function InsightsPage() {
 
             <div>
               <h3 className="mb-sm text-heading-4 text-ink">Pitching</h3>
-              <div className="grid grid-cols-1 gap-sm md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-sm md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {PITCHING_METRICS.map(([key, acronym]) => (
                   <LeaderboardExpander
                     key={key}

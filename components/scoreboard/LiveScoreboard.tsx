@@ -45,7 +45,7 @@ function TeamRow({ team, score, highlight }: { team: Team | undefined; score: nu
   return (
     <div className="flex items-center justify-between gap-1.5">
       <div className="flex items-center gap-1.5 overflow-hidden">
-        {team && <Image src={team.logo_url} alt="" width={14} height={14} unoptimized />}
+        {team && <Image src={team.logo_url} alt="" width={18} height={18} unoptimized />}
         <span className="truncate text-micro font-semibold text-ink-deep">{team?.abbreviation ?? "--"}</span>
       </div>
       <span className={`font-mono text-body-sm-medium ${highlight ? "text-accent-blue" : "text-ink-deep"}`}>
@@ -62,7 +62,7 @@ function GameCell({ game, teamById }: { game: ScheduleGame; teamById: Map<number
   const isFinal = game.status === "final";
 
   return (
-    <div className="flex h-full w-44 flex-none items-center justify-between gap-2 border-r border-hairline px-3 transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-surface-soft">
+    <div className="flex h-full w-52 flex-none items-center justify-between gap-2 border-r border-hairline px-3 transition-colors duration-(--duration-xs) ease-(--ease-primary) hover:bg-surface-soft">
       <div className="flex w-[62%] flex-col justify-center gap-0.5">
         <TeamRow team={away} score={game.awayScore} highlight={isLive && game.awayScore > game.homeScore} />
         <TeamRow team={home} score={game.homeScore} highlight={isLive && game.homeScore > game.awayScore} />
@@ -130,7 +130,7 @@ export function LiveScoreboard() {
   if (error || (games && games.length === 0)) return null;
 
   return (
-    <div className="flex h-14 w-full select-none items-center border-b border-hairline bg-canvas text-xs">
+    <div className="flex h-16 w-full select-none items-center border-b border-hairline bg-canvas text-xs">
       <div className="flex h-full flex-none items-center border-r border-hairline px-4 text-body-sm-medium text-ink-deep">
         {dateLabel}
       </div>
